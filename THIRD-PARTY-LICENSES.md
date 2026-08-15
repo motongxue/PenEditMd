@@ -40,35 +40,30 @@ SOFTWARE.
 
 ---
 
-## 2. Patrick-mufeng/gzh-AI-Design-skill（AI 排版方法论）
+## 2. gzh-design-skill（AI 排版组件库 / 主题素材来源）
 
-- 仓库：https://github.com/Patrick-mufeng/gzh-AI-Design-skill
-- 协议：**MIT License**
-- 版权：© Patrick-mufeng
+> ⚠️ **本组件以 AGPL-3.0 强 copyleft 授权，与本项目根目录的 MIT 声明并不一致。**
+> 当前为过渡标注：PenEditMd 实际内置并使用了该组件的排版主题库（即 `renderer/assets/ai-layout/` 下的各主题文件）。
+> 根据 AGPL-3.0，任何包含该组件的分发（含公开仓库与安装包）须整体遵守 AGPL，并向接收者提供对应源码。
+> 项目整体授权走向（维持 MIT 还是改为 AGPL）尚未最终确定；**在明确前，请勿以 MIT / 闭源方式分发本产品。**
 
-```
-MIT License
+- 来源：WorkBuddy 内置 `gzh-design-skill`（微信公众号排版引擎）
+- 协议：**GNU Affero General Public License v3 (AGPL-3.0)**
+- 版权：© 甲木 (Jiamu) × 摸鱼小李 (Moyu Xiaoli)
+- 完整许可证文本：`licenses/gzh-design-skill-LICENSE`
 
-Copyright (c) Patrick-mufeng
+---
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## 2b. gzh-AI-Design-skill（AI 排版方法论 / 推送引擎）
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+- 来源：WorkBuddy 内置 `gzh-AI-Design-skill`
+- 协议：**未随附 LICENSE 文件（许可状态未知）**
+- 说明：该组件未提供许可证，默认保留原作者全部权利。**使用前须取得原作者明确授权**；
+  在授权确认前，不应将其作为可对外分发的组成部分发布。
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+---
+
+
 
 ---
 
