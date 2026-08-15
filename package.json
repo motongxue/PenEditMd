@@ -4,7 +4,7 @@
   "description": "PenEditMd：基于微软 markitdown 的桌面应用，把各种文件一键转换为 Markdown，并支持编辑/排版/导出",
   "main": "main.js",
   "author": "WorkBuddy",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "scripts": {
     "setup:python": "node scripts/setup-python.js",
     "dev": "vite",

@@ -1,7 +1,7 @@
 # 第三方许可声明 / Third-Party Licenses
 
 本文件列出「笔削 PenEditMd」所使用之第三方开源组件的许可证与版权信息。
-本软件自身以 MIT 协议发布（见 `LICENSE`）。
+本软件自身以 **GNU Affero General Public License v3 (AGPL-3.0)** 协议发布（见 `LICENSE`）。
 
 ---
 
@@ -42,10 +42,10 @@ SOFTWARE.
 
 ## 2. gzh-design-skill（AI 排版组件库 / 主题素材来源）
 
-> ⚠️ **本组件以 AGPL-3.0 强 copyleft 授权，与本项目根目录的 MIT 声明并不一致。**
-> 当前为过渡标注：PenEditMd 实际内置并使用了该组件的排版主题库（即 `renderer/assets/ai-layout/` 下的各主题文件）。
-> 根据 AGPL-3.0，任何包含该组件的分发（含公开仓库与安装包）须整体遵守 AGPL，并向接收者提供对应源码。
-> 项目整体授权走向（维持 MIT 还是改为 AGPL）尚未最终确定；**在明确前，请勿以 MIT / 闭源方式分发本产品。**
+> 本组件以 **AGPL-3.0** 授权，与本项目根目录的 AGPL-3.0 声明一致。
+> PenEditMd 实际内置并使用了该组件的排版主题库（即 `renderer/assets/ai-layout/` 下的各主题文件）。
+> 依据 AGPL-3.0 第 13 条（Remote Network Interaction），本项目公开仓库即作为对应源码的提供渠道：
+> https://github.com/motongxue/PenEditMd 。
 
 - 来源：WorkBuddy 内置 `gzh-design-skill`（微信公众号排版引擎）
 - 协议：**GNU Affero General Public License v3 (AGPL-3.0)**
@@ -56,10 +56,13 @@ SOFTWARE.
 
 ## 2b. gzh-AI-Design-skill（AI 排版方法论 / 推送引擎）
 
+> ⚠️ **该组件未随附任何 LICENSE 文件，默认保留原作者全部权利。**
+> 即便本项目自身已采用 AGPL-3.0，也**无权将无许可证的第三方代码纳入分发**。
+> 在取得原作者明确授权之前，不应将其作为可对外分发的组成部分发布；否则须从项目中移除该组件。
+
 - 来源：WorkBuddy 内置 `gzh-AI-Design-skill`
 - 协议：**未随附 LICENSE 文件（许可状态未知）**
-- 说明：该组件未提供许可证，默认保留原作者全部权利。**使用前须取得原作者明确授权**；
-  在授权确认前，不应将其作为可对外分发的组成部分发布。
+- 说明：使用前须取得原作者明确授权；授权确认前不应作为可分发部分发布。
 
 ---
 

@@ -154,4 +154,10 @@ npm run build             # 再打安装包
 
 ## 许可证
 
-核心引擎遵循微软原始 MIT 许可证；本桌面壳代码同样以 MIT 许可证发布。
+本项目以 **GNU Affero General Public License v3 (AGPL-3.0)** 整体发布。
+
+- 核心转换引擎 Microsoft markitdown 遵循其原始 **MIT** 许可证（© Microsoft Corporation）。
+- AI 排版组件 `gzh-design-skill` 以 **AGPL-3.0** 发布（© 甲木 × 摸鱼小李）。
+- 其余前端 / 运行时依赖的许可证见 `THIRD-PARTY-LICENSES.md`。
+
+> 依据 AGPL-3.0：任何人获取到本软件的二进制（含安装包、在线服务），均有权获得其对应源代码。完整源码见公开仓库 https://github.com/motongxue/PenEditMd。
