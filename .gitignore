@@ -20,6 +20,9 @@ renderer/renderer/dist-*/
 vite.config.deploy.mjs.timestamp-*.mjs
 build.log
 
+# Internal dev docs (not for public repo)
+docs/
+
 # 参考源码（审计用，非项目代码）
 .ref/
 
