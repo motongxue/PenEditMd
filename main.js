@@ -1387,11 +1387,22 @@ function anyLaunchAtLogin() {
 }
 function applyAutoLaunch() {
   try {
-    app.setLoginItemSettings({
-      openAtLogin: anyLaunchAtLogin(),
-      path: process.execPath,
-      args: ["--notes-only"],
-    });
+    const hasAny = anyLaunchAtLogin();
+    // 开发模式下 process.execPath 是 node_modules/electron/dist/electron.exe，
+    // 必须同时传入应用目录，否则裸启动会显示 Electron 默认空页面。
+    if (!app.isPackaged) {
+      app.setLoginItemSettings({
+        openAtLogin: hasAny,
+        path: process.execPath,
+        args: [app.getAppPath(), "--notes-only"],
+      });
+    } else {
+      app.setLoginItemSettings({
+        openAtLogin: hasAny,
+        path: process.execPath,
+        args: ["--notes-only"],
+      });
+    }
   } catch (_) {}
 }
 
