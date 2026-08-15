@@ -114,6 +114,7 @@ async function buildMainMenu(editor, onFind, onStatus) {
     { label: "插入表格", action: () => editor.tableOp("insert") },
     { label: "插入链接", accel: "Ctrl+K", action: () => editor.insertLink() },
     { label: "插入图片", action: () => editor.insertImage() },
+    { label: "插入图片占位标记", action: () => editor.insertImagePlaceholder?.() },
     { sep: true },
     { label: "全选", accel: "Ctrl+A", action: () => editor.selectAll?.() },
     { label: "选中当前行", action: () => editor.selectLine?.() },

@@ -458,6 +458,15 @@ body {
   margin-bottom: 14px; padding: 10px 12px; border-radius: 8px;
   background: var(--accentSoft, #f6f8fa); border: 1px dashed var(--border, #e5e7eb);
 }
+/* AI 排版弹窗里的选项行（图片占位开关等） */
+.ai-opt-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text, #374151); line-height: 1.4;
+  margin: 0 0 14px; padding: 9px 12px; border-radius: 8px;
+  background: var(--accentSoft, #f6f8fa); border: 1px solid var(--border, #e5e7eb);
+  cursor: pointer; user-select: none;
+}
+.ai-opt-row input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
 .ai-theme-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;

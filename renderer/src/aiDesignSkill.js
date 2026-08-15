@@ -56,6 +56,11 @@ const COMPAT_RULES = `
 - 图片说明：只有 ![说明](url) 里真有说明文字才生成说明组件；空 alt 不编造说明。
 - 来自 Markdown 的图片原样保留其 URL（http/https 外部图不重传）；本地相对路径图片保留原路径，由用户后续替换。
 
+# 图片占位块（由用户开关控制，见下方「图片占位指令」）
+- 占位块必须满足：最外层是 <p class="ai-img-ph" style="...虚线框居中...">…</p>，
+  且内部用 <span leaf="">待补素材</span> 包裹文字，否则在公众号里不可点击替换。
+- 这是唯一允许用虚线框（dashed）的场景，表达"此处待补图"。
+
 # 招牌排版特性（必须做）
 - 章节自动编号：按 ## 出现顺序分配 01/02/03…；末章若为结语/总结类，用 ∞ 编号变体（未说明时沿用数字编号）。
 - 英文标签：据中文章节标题生成英文标签（实测→TEST、教程→TUTORIAL、总结→SUMMARY、思考→THOUGHTS…），主题库有对应槽位时使用。
@@ -81,8 +86,11 @@ const COMPAT_RULES = `
 /** 拼出注入 AI 的「方法论 + 真实组件库」提示词（与 gzh-design-skill 一致：
  *  规则 + 选中主题完整组件 HTML + 通用增量库 + 配方表，强制从中取组件）。
  * 单独导出，便于在 ai-layout.log 中完整打印，让用户核对实际发给模型的提示词。
- * @param {string|null} themeId 选中的主题 id；null/省略表示让 AI 自由决定（用默认库+主题清单） */
-export function buildAiLayoutInstruction(themeId) {
+ * @param {string|null} themeId 选中的主题 id；null/省略表示让 AI 自由决定（用默认库+主题清单）
+ * @param {object} [opts]
+ * @param {boolean} [opts.imgPlaceholder=true] 是否在排版里插入「待补素材」图片占位块（可点击替换） */
+export function buildAiLayoutInstruction(themeId, opts) {
+  const imgPlaceholder = !(opts && opts.imgPlaceholder === false); // 默认 true
   const langDesc = DESIGN_LANGUAGES.map(
     (l) =>
       `- ${l.name}（${l.id}，主色 ${l.mainColor}）：气质「${l.vibe}」，最适合「${l.fit}」`
@@ -115,18 +123,41 @@ export function buildAiLayoutInstruction(themeId) {
     "\n\n" +
     librarySection +
     "\n\n" +
+    (imgPlaceholder
+      ? IMG_PLACEHOLDER_ON
+      : IMG_PLACEHOLDER_OFF) +
+    "\n\n" +
     "请按上述规范完成 AI 排版：选择最契合的主题（或说明你想要的感觉），从组件库取现成 HTML 逐段装配，生成可直接粘贴公众号的、100% 内联的纯 <section> HTML 片段。只输出 HTML 片段。"
   );
 }
+
+/** 图片占位指令：开启时 AI 自动决定位置，并同时尊重用户显式写的【插入描述】标记 */
+const IMG_PLACEHOLDER_ON = `# 图片占位指令（本次开启：图片位置交给 AI 定）
+- 你（AI）要判断"此处应有图但目前没有"的位置，并在这些位置**主动生成**图片占位块。
+- 同时，原文里用户显式写的 \`【插入描述】\` 标记**必须**变成占位块，并把「描述」写进占位文字（如 \`【插入产品截图】\` → 占位块显示「🖼 待补素材：产品截图」），不要丢弃用户的描述文字。
+- 占位块结构（必须照抄，外层 <p class="ai-img-ph">，内部 <span leaf> 包裹，虚线居中）：
+  <p class="ai-img-ph" style="margin:0 0 24px;padding:30px 20px;border:1.5px dashed #DAD7D2;border-radius:14px;background:#FAFAF8;text-align:center;cursor:pointer;"><span leaf="">🖼 待补素材：此处该放什么图</span></p>
+- 不要凭空编造图床链接，用上面的占位块代替；用户会在预览里点击占位块直接替换成真实图片。`;
+
+/** 图片占位指令：关闭时 AI 不自动猜测位置，但仍尊重用户显式写的【插入描述】标记 */
+const IMG_PLACEHOLDER_OFF = `# 图片占位指令（本次关闭：图片位置由用户手动控制）
+- 本次**不要**让 AI 自动猜测并生成占位块（不在未标记处插入虚线框）。
+- 但：原文里用户显式写的 \`【插入描述】\` 标记**仍要**变成占位块，并把「描述」写进占位文字（如 \`【插入产品截图】\` → 显示「🖼 待补素材：产品截图」）——这是用户的明确意图，必须保留，不要当成普通文字丢掉。
+- 占位块结构（外层 <p class="ai-img-ph">，内部 <span leaf> 包裹，虚线居中）：
+  <p class="ai-img-ph" style="margin:0 0 24px;padding:30px 20px;border:1.5px dashed #DAD7D2;border-radius:14px;background:#FAFAF8;text-align:center;cursor:pointer;"><span leaf="">🖼 待补素材：描述</span></p>
+- 正文有真实图片 URL 就正常输出 <img>；没有图片、且未写【插入】标记的位置就直接留白或跳过，绝不生成虚线占位框。`;
 
 /** 拼出给 AI 的完整消息数组。
  * 注意：折叠为单条 user 消息，不依赖 system 角色——
  * 很多 OpenAI 兼容接口/代理对 system 角色支持差（忽略或静默返回空），
  * 会导致排版返回空内容。这与能正常工作的「行内 AI」保持同一结构。
  * @param {string} md 文章 Markdown 源
- * @param {object|null} theme 选中的主题对象（{id,name,mainColor,vibe,fit}）；null/省略表示让 AI 自由选择 */
-export function buildAiLayoutMessages(md, theme) {
-  const instruction = buildAiLayoutInstruction(theme && theme.id ? theme.id : null);
+ * @param {object|null} theme 选中的主题对象（{id,name,mainColor,vibe,fit}）；null/省略表示让 AI 自由选择
+ * @param {object} [opts]
+ * @param {boolean} [opts.imgPlaceholder=true] 是否插入图片占位块 */
+export function buildAiLayoutMessages(md, theme, opts) {
+  const imgPlaceholder = !(opts && opts.imgPlaceholder === false);
+  const instruction = buildAiLayoutInstruction(theme && theme.id ? theme.id : null, { imgPlaceholder });
   let themeLine;
   if (theme && theme.name) {
     // 指定主题：强约束使用该主题的配色与组件风格，不混用其它主题

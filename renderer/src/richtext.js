@@ -1416,6 +1416,29 @@ export function createRichEditor({ el, onChange }) {
     triggerChange();
   }
 
+  /** 插入图片占位标记【插入图片】，并选中"图片"两字便于直接改写描述 */
+  function insertImagePlaceholder() {
+    const token = "【插入图片】";
+    ensureFocus();
+    document.execCommand("insertText", false, token);
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      const r = sel.getRangeAt(0);
+      const node = r.startContainer;
+      const off = r.startOffset; // 插入后光标落在标记末尾
+      if (node.nodeType === 3 && off >= 3) {
+        try {
+          const nr = document.createRange();
+          nr.setStart(node, off - 3); // 图
+          nr.setEnd(node, off - 1); // 片
+          sel.removeAllRanges();
+          sel.addRange(nr);
+        } catch (_) {}
+      }
+    }
+    triggerChange();
+  }
+
   /** 插入一段 HTML（粘贴富文本 / 插入图片用） */
   function insertHTML(html) {
     ensureFocus();
@@ -1489,6 +1512,7 @@ export function createRichEditor({ el, onChange }) {
     focus,
     getSelectionText,
     insertText,
+    insertImagePlaceholder,
     insertHTML,
     deleteSelection,
     selectAll,

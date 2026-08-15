@@ -310,6 +310,15 @@ function createSourceEditor({ ta, onChange }) {
       replaceRange(start, end, text);
       triggerChange();
     },
+    /** 在光标处插入图片占位标记【插入图片】，并选中"图片"两字便于直接改写描述 */
+    insertImagePlaceholder: () => {
+      const { start, end } = sel();
+      const token = "【插入图片】";
+      replaceRange(start, end, token);
+      const nameStart = start + "【插入".length; // 定位到"图片"起始
+      setSel(nameStart, nameStart + "图片".length);
+      triggerChange();
+    },
     /** 删除选中内容 */
     deleteSelection: () => {
       const { start, end } = sel();
