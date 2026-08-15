@@ -1,0 +1,1013 @@
+/* ============================================================
+   MarkItDown Desktop — 从零实现的双栏编辑器样式
+   设计：深色为默认，浅色可切换；工具栏极简单行；源码/预览分屏
+   ============================================================ */
+
+:root {
+  --bg: #1e1f22;
+  --bg-soft: #26282c;
+  --bg-elev: #2c2f34;
+  --border: #3a3d42;
+  --text: #e6e6e6;
+  --text-dim: #9aa0a6;
+  --accent: #4c8dff;
+  --accent-soft: #2d4a73;
+  --danger: #e5534b;
+  --ok: #3fb950;
+  --code-bg: #16181d;
+  --radius: 7px;
+  --tb-h: 40px;
+}
+
+html.light {
+  --bg: #f5f6f7;
+  --bg-soft: #ffffff;
+  --bg-elev: #ffffff;
+  --border: #e3e5e8;
+  --text: #1f2328;
+  --text-dim: #656d76;
+  --accent: #1f6feb;
+  --accent-soft: #d7e6ff;
+  --code-bg: #f6f8fa;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 后端状态指示点（原顶栏，现已移入工具栏） */
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dot.gray { background: #888; }
+.dot.green { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.dot.red { background: var(--danger); }
+
+/* ---------- 工具栏（极简单行） ---------- */
+.toolbar {
+  height: XXX;
+  flex: 0 0 XXX;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--border);
+  /* 必须为 visible，否则 overflow-x:auto 会把 overflow-y 算成 auto，
+     导致向下展开的导出下拉菜单被裁剪而看不到 */
+  overflow: visible;
+}
+.tb-group { display: flex; align-items: center; gap: 4px; }
+.tb-group.mode { margin-left: auto; }
+.tb-spacer { flex: 1; }
+.tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+.tbtn {
+  height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+.tbtn:hover:not(:disabled) { background: var(--bg-elev); }
+.tbtn:active:not(:disabled) { background: var(--accent-soft); }
+.tbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tbtn.ghost { color: var(--text-dim); }
+.tbtn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.tb-group.mode .seg { font-size: 12px; padding: 0 10px; }
+.tb-group.format .tbtn { font-size: 12px; }
+
+/* ---------- 工作区 ---------- */
+.workspace { flex: 1; position: relative; overflow: hidden; }
+
+/* 拖拽覆盖层：平时 hidden，拖文件进窗口时浮在编辑区之上 */
+.dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(2px);
+  border: 2px dashed transparent;
+  pointer-events: none; /* 覆盖层只做提示，不吃掉 drop 事件（drop 绑在 window 上） */
+}
+.dropzone.dragover {
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  border-color: var(--accent);
+}
+.drop-inner { text-align: center; color: var(--text-dim); }
+.drop-icon { font-size: 48px; }
+.drop-inner h2 { color: var(--text); margin: 12px 0 6px; }
+.drop-inner p { margin: 4px 0; font-size: 13px; }
+.btn {
+  margin-top: 14px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn.primary { background: var(--accent); }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+
+/* 结果区 */
+.result { position: absolute; inset: 0; display: flex; }
+.filelist {
+  width: 200px;
+  flex: 0 0 200px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-soft);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.filelist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+.filelist-actions { display: flex; gap: 4px; }
+.filelist-actions .btn { margin-top: 0; padding: 3px 8px; font-size: 11.5px; }
+.filelist-bottom {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.filelist-bottom ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.filelist-count {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+/* 侧栏折叠开关：贴着侧栏右边缘的明显竖条按钮（吸顶居中）。
+   默认用页面中性色，与整体 chrome 协调；hover 时才给 accent 反馈。 */
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  left: 200px;                 /* 侧栏宽 200px，正好骑在右边缘上，一半在栏内一半探出 */
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  width: 22px;
+  height: 58px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: background 0.12s, color 0.12s, left 0.12s, transform 0.12s, border-color 0.12s;
+}
+.sidebar-toggle:hover {
+  background: var(--bg-elev);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.sidebar-toggle:active { transform: translate(-50%, -50%) scale(0.92); }
+#result.sidebar-collapsed .sidebar-toggle {
+  left: 0;
+  transform: translate(0, -50%);  /* 折叠后贴在编辑区最左侧，探向右侧 */
+  border-radius: 0 10px 10px 0;
+  border-left: none;
+}
+#result.sidebar-collapsed .filelist { display: none; }
+.filelist li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.filelist li:hover { background: var(--bg-elev); }
+.filelist li.active { background: var(--accent-soft); color: var(--accent); }
+.filelist li.error .name { color: var(--danger); }
+.filelist li .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.filelist li .badge { font-size: 11px; color: var(--text-dim); flex: 0 0 auto; }
+
+/* 编辑区 */
+.editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.editor-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+  font-size: 12px;
+}
+.editor-head #current-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 3px 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+.editor-head #current-name:hover { border-color: var(--border); }
+.editor-head #current-name:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+}
+.editor-head #current-name:disabled { opacity: 0.5; cursor: default; }
+.editor-head .chars { color: var(--text-dim); }
+.editor-type-toggle { display: flex; align-items: center; gap: 2px; }
+.editor-type-toggle .seg { font-size: 12px; padding: 0 8px; }
+
+/* 双栏 */
+.panes {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  --split: 0.5;
+}
+.pane { overflow: hidden; height: 100%; }
+.pane-source { width: calc(var(--split) * 100%); flex: 0 0 auto; }
+/* 注意：滚动条必须落在 #preview 自身上（见下方 .preview 的 overflow-y:auto）。
+   若滚动容器是这一层 .pane-preview，JS 里读写 #preview.scrollTop 恒为 0，
+   分屏滚动联动与"重渲染后还原滚动位置"都会失效。 */
+.pane-preview { flex: 1; overflow: hidden; }
+.resizer {
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: var(--border);
+}
+.resizer:hover { background: var(--accent); }
+
+.panes.source .pane-source { width: 100%; }
+.panes.source .pane-preview,
+.panes.source .resizer { display: none; }
+.panes.preview .pane-preview { flex: 1; }
+.panes.preview .pane-source,
+.panes.preview .resizer { display: none; }
+
+/* 编辑面板：源码/富文本二选一，填满父容器 */
+.pane-source { position: relative; }
+.source-input,
+.rich-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  padding: 16px 18px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+  caret-color: var(--accent);
+  overflow-y: auto;
+}
+.source-input {
+  resize: none;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13.5px;
+  tab-size: 2;
+}
+.source-input::placeholder { color: var(--text-dim); }
+/* contenteditable 没有原生 placeholder。
+   注意 setValue("") 会生成一个 <p><br></p> 方便输入，此时 :empty 不成立，
+   所以要额外匹配「只有一个空段落」的情况，否则空文档看不到提示文字。
+   用 absolute 定位是为了不占据行高，把那个空段落顶到第二行。 */
+.rich-input:empty::before,
+.rich-input:has(> p:only-child > br:only-child)::before {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  color: var(--text-dim);
+  content: attr(placeholder);
+  pointer-events: none;
+}
+
+/* 富文本编辑器内部样式 */
+.rich-input h1, .rich-input h2, .rich-input h3,
+.rich-input h4, .rich-input h5, .rich-input h6 {
+  margin: 0.9em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.rich-input h1 { font-size: 1.6em; }
+.rich-input h2 { font-size: 1.35em; }
+.rich-input h3 { font-size: 1.15em; }
+.rich-input h4 { font-size: 1.02em; }
+.rich-input h5 { font-size: 0.95em; }
+.rich-input h6 { font-size: 0.88em; color: var(--text-dim); }
+.rich-input p { margin: 0.5em 0; }
+.rich-input blockquote {
+  margin: 0.6em 0;
+  padding: 0.3em 0.8em;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-soft);
+  color: var(--text-dim);
+}
+.rich-input ul, .rich-input ol { padding-left: 1.6em; margin: 0.5em 0; }
+.rich-input li { margin: 0.2em 0; }
+.rich-input code {
+  font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.rich-input pre {
+  background: var(--code-bg);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+.rich-input pre code { background: transparent; padding: 0; }
+
+/* ============ 代码块（对齐 Typora）============
+   结构：pre.cb[contenteditable=false]  ← 整块是"不可编辑岛"
+           └ div.cb-stack
+               ├ textarea.cb-input   ← 真正输入层（在流内，撑开高度，文字透明、光标可见）
+               └ pre.cb-hl           ← 高亮背板（绝对定位铺满，pointer-events:none）
+           └ span.cb-lang            ← 右下角语言标签，点击弹出浮层（浮层挂 body）
+   关键：两层字体/字号/行高/padding/换行规则必须完全一致，字形才能精确重合。 */
+.rich-input pre.cb {
+  position: relative;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0;
+  margin: 0.6em 0;
+  overflow: visible;
+  /* 外层 pre 只当容器：必须清掉 UA 的 white-space:pre，否则标签之间的换行/缩进
+     会变成可见空白，代码块顶部莫名多出空行。真正的 pre 语义在 .cb-hl / .cb-input 上。
+     font-size:0 同理，用来吃掉标签间空白文本节点的高度。 */
+  white-space: normal;
+  font-size: 0;
+  line-height: 0;
+}
+.rich-input pre.cb .cb-stack {
+  position: relative;
+  display: block;
+  min-height: 46px;
+}
+/* 两层共享的排版度量——任何一条不一致都会导致光标与字形错位 */
+.rich-input pre.cb .cb-hl,
+.rich-input pre.cb .cb-input {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 12px 28px;
+  border: 0;
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas, Menlo, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: 0;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  /* textarea/highlight 的字形必须一致。SFMono 在 Chrome 字体回退时会被替换成非等宽，
+     强制优先找系统等宽字体（等宽字宽才能保证 textarea 输入与高亮层完全对齐）。 */
+  font-variant-ligatures: none;
+  background: transparent;
+}
+/* 高亮背板：绝对定位铺满，只负责"显示"，不接收任何交互 */
+.rich-input pre.cb .cb-hl {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+.rich-input pre.cb .cb-hl code {
+  display: block;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--text);
+  /* 不能用 font:inherit —— 外层 pre.cb 的 font-size:0 会让 highlight 背板变成 0 号字。
+     显式列出字体属性，保证背板字号与 textarea 完全一致（字形才会精准对齐）。 */
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas, Menlo, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 400;
+  font-variant-ligatures: none;
+  white-space: inherit;
+  word-break: inherit;
+  overflow-wrap: inherit;
+}
+/* 输入层：在流内撑开高度（JS 自适应）。
+   文字用极低透明度 + 相同字体，仅用于呈现"光标"的位置感；
+   真正的可读字形由 .cb-hl 背景层显示（高亮配色由 hljs 提供）。
+   这样能避免两层文字叠加导致的视觉错位，又保留了原生 textarea 的选区/光标交互。 */
+.rich-input pre.cb .cb-input {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 46px;
+  overflow: hidden;
+  resize: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.12);
+  caret-color: var(--accent);
+}
+html.light .rich-input pre.cb .cb-input {
+  color: rgba(0, 0, 0, 0.18);
+}
+.rich-input pre.cb .cb-input::selection {
+  background: rgba(88, 166, 255, 0.35);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* 右下角语言标签：只是个可点击的文字，不是输入框，永远不会抢代码区焦点 */
+.rich-input pre.cb .cb-lang {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  z-index: 2;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  line-height: 16px;
+  color: var(--text-dim);
+  background: var(--bg-soft);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.75;
+  transition: opacity 0.12s, border-color 0.12s, color 0.12s;
+}
+.rich-input pre.cb:hover .cb-lang { opacity: 1; }
+.rich-input pre.cb .cb-lang:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* 语言选择浮层：挂在 document.body 上，脱离 contenteditable，不会干扰编辑焦点 */
+.cb-lang-pop {
+  position: fixed;
+  z-index: 300;
+  width: 210px;
+  padding: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.cb-lang-pop[hidden] { display: none; }
+.cb-lang-search {
+  width: 100%;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+}
+.cb-lang-search:focus { border-color: var(--accent); }
+.cb-lang-list {
+  margin-top: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.cb-lang-item {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cb-lang-item.active,
+.cb-lang-item:hover { background: var(--accent); color: #fff; }
+.cb-lang-empty { padding: 6px 8px; font-size: 12px; color: var(--text-dim); }
+
+/* 暗色主题下的代码高亮配色（highlight.js 的 github 主题是浅色，这里在编辑器内覆盖为深色） */
+.rich-input pre.cb .hljs-comment, .rich-input pre.cb .hljs-quote { color: #7b8494; font-style: italic; }
+.rich-input pre.cb .hljs-keyword, .rich-input pre.cb .hljs-selector-tag,
+.rich-input pre.cb .hljs-built_in, .rich-input pre.cb .hljs-name, .rich-input pre.cb .hljs-tag { color: #ff7b72; }
+.rich-input pre.cb .hljs-string, .rich-input pre.cb .hljs-attr, .rich-input pre.cb .hljs-meta .hljs-string,
+.rich-input pre.cb .hljs-addition, .rich-input pre.cb .hljs-template-tag { color: #a5d6ff; }
+.rich-input pre.cb .hljs-number, .rich-input pre.cb .hljs-literal, .rich-input pre.cb .hljs-variable,
+.rich-input pre.cb .hljs-meta, .rich-input pre.cb .hljs-symbol { color: #79c0ff; }
+.rich-input pre.cb .hljs-title, .rich-input pre.cb .hljs-title.function_, .rich-input pre.cb .hljs-section,
+.rich-input pre.cb .hljs-class_, .rich-input pre.cb .hljs-type { color: #d2a8ff; }
+.rich-input pre.cb .hljs-attribute, .rich-input pre.cb .hljs-property, .rich-input pre.cb .hljs-params,
+.rich-input pre.cb .hljs-selector-attr, .rich-input pre.cb .hljs-selector-class { color: #ffa657; }
+.rich-input pre.cb .hljs-deletion { color: #ffa198; }
+.rich-input pre.cb .hljs-emphasis { font-style: italic; }
+.rich-input pre.cb .hljs-strong { font-weight: 700; }
+/* 浅色主题：代码块与高亮配色适配 */
+html.light .rich-input pre.cb { background: #f6f8fa; }
+html.light .rich-input pre.cb .cb-lang { background: #eaeef2; }
+html.light .rich-input pre.cb .cb-hl code { color: #1f2328; }
+html.light .rich-input pre.cb .hljs-comment, html.light .rich-input pre.cb .hljs-quote { color: #6a737d; }
+html.light .rich-input pre.cb .hljs-keyword, html.light .rich-input pre.cb .hljs-selector-tag,
+html.light .rich-input pre.cb .hljs-built_in, html.light .rich-input pre.cb .hljs-name, html.light .rich-input pre.cb .hljs-tag { color: #d73a49; }
+html.light .rich-input pre.cb .hljs-string, html.light .rich-input pre.cb .hljs-attr, html.light .rich-input pre.cb .hljs-addition { color: #032f62; }
+html.light .rich-input pre.cb .hljs-number, html.light .rich-input pre.cb .hljs-literal, html.light .rich-input pre.cb .hljs-variable, html.light .rich-input pre.cb .hljs-symbol { color: #005cc5; }
+html.light .rich-input pre.cb .hljs-title, html.light .rich-input pre.cb .hljs-title.function_, html.light .rich-input pre.cb .hljs-section, html.light .rich-input pre.cb .hljs-class_, html.light .rich-input pre.cb .hljs-type { color: #6f42c1; }
+html.light .rich-input pre.cb .hljs-attribute, html.light .rich-input pre.cb .hljs-property, html.light .rich-input pre.cb .hljs-params { color: #e36209; }
+
+/* ============ 数学公式（KaTeX，对齐 Typora）============
+   块级 $$…$$ → div.math-block[contenteditable=false]，双击进入源码编辑
+   行内 $…$   → span.math-inline[contenteditable=false]，双击弹窗编辑 */
+.math-block {
+  display: block;
+  margin: 0.8em 0;
+  padding: 8px 10px;
+  text-align: center;
+  border-radius: var(--radius);
+  cursor: pointer;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.math-block:hover { background: var(--bg-soft); }
+.math-block > .math-render { display: block; }
+.math-block.math-empty .math-render::before {
+  content: "双击输入公式";
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.math-inline {
+  display: inline;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.math-inline:hover { background: var(--bg-soft); }
+.math-inline.math-empty .math-render::before {
+  content: "$…$";
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.math-render .katex { color: var(--text); }
+.math-render .katex-display { margin: 0; }
+/* 公式源码编辑框（双击块级公式后原地出现） */
+.math-src {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 8px 10px;
+  font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+  color: var(--text);
+  background: var(--code-bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  outline: none;
+  resize: vertical;
+}
+/* 公式渲染失败时 KaTeX 会输出红色内容，这里保证在暗色下也看得清 */
+.math-render .katex-error { color: #ff7b72; }
+.rich-input img { max-width: 100%; border-radius: 4px; }
+.rich-input a { color: var(--accent); }
+.rich-input hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+.rich-input table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 0.95em;
+}
+.rich-input th, .rich-input td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;   /* 内容顶对齐，避免空单元格点击落点错位 */
+  min-height: 2.4em;     /* 空单元格也留出足够点击高度，点哪行就是哪行 */
+}
+.rich-input th { background: var(--bg-soft); font-weight: 600; }
+
+/* ---------- 预览（markdown-body） ---------- */
+.preview {
+  height: 100%;
+  overflow-y: auto;
+  padding: 18px 24px;
+  line-height: 1.7;
+  color: var(--text);
+  word-wrap: break-word;
+}
+.preview h1, .preview h2, .preview h3,
+.preview h4, .preview h5, .preview h6 {
+  margin: 1.2em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.preview h1 { font-size: 1.7em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.preview h2 { font-size: 1.4em; border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+.preview h3 { font-size: 1.2em; }
+.preview h4 { font-size: 1.05em; }
+.preview h5 { font-size: 0.95em; }
+.preview h6 { font-size: 0.88em; color: var(--text-dim); }
+.preview strong { font-weight: 700; }
+.preview em { font-style: italic; }
+.preview del, .preview s, .preview strike { text-decoration: line-through; color: var(--text-dim); }
+.preview p { margin: 0.7em 0; }
+.preview a { color: var(--accent); text-decoration: none; }
+.preview a:hover { text-decoration: underline; }
+.preview blockquote {
+  margin: 0.8em 0;
+  padding: 0.4em 1em;
+  border-left: 4px solid var(--accent);
+  background: var(--bg-soft);
+  color: var(--text-dim);
+}
+.preview code {
+  font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+.preview pre {
+  background: var(--code-bg);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+.preview pre code { background: transparent; padding: 0; }
+.preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  font-size: 0.95em;
+}
+.preview th, .preview td {
+  border: 1px solid var(--border);
+  padding: 7px 10px;
+  text-align: left;
+  vertical-align: top;
+  min-height: 2.4em;
+}
+.preview th { background: var(--bg-soft); font-weight: 600; }
+.preview tr:nth-child(even) td { background: rgba(127,127,127,0.06); }
+.preview img { max-width: 100%; border-radius: 4px; }
+.preview ul, .preview ol { padding-left: 1.6em; margin: 0.6em 0; }
+.preview li { margin: 0.25em 0; }
+.preview hr { border: none; border-top: 1px solid var(--border); margin: 1.4em 0; }
+
+/* 多图横排（L3）：同一行内多个图片并排显示 */
+.preview img { display: inline-block; vertical-align: middle; }
+.preview p img:only-child { display: block; max-width: 100%; }
+.preview p img:not(:only-child) { max-width: 46%; margin: 2px; }
+
+/* 任务列表（marked v12 渲染为 <li><input type=checkbox>，无专用 class，用 :has 处理） */
+.preview li:has(> input[type="checkbox"]) { list-style: none; }
+.preview li > input[type="checkbox"] { margin-right: 6px; vertical-align: middle; }
+
+/* TOC 目录 */
+.preview .toc {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 1em 0;
+}
+.preview .toc-title { font-weight: 600; margin-bottom: 6px; color: var(--text-dim); font-size: 12px; }
+.preview .toc ul { list-style: none; padding-left: 0; margin: 0; }
+.preview .toc li { margin: 3px 0; }
+.preview .toc-l1 { padding-left: 0; }
+.preview .toc-l2 { padding-left: 14px; }
+.preview .toc-l3 { padding-left: 28px; }
+.preview .toc-l4 { padding-left: 42px; }
+.preview .toc-l5 { padding-left: 56px; }
+.preview .toc-l6 { padding-left: 70px; }
+.preview .toc a { color: var(--text); }
+
+/* ---------- 状态栏 / 遮罩 ---------- */
+.statusbar {
+  height: 24px;
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--bg-soft);
+  border-top: 1px solid var(--border);
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  z-index: 50;
+  gap: 12px;
+}
+.spinner {
+  width: 34px; height: 34px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.hidden { display: none !important; }
+
+/* 专注模式：隐藏工具栏与文件列表，最大化写作区 */
+body.focus-mode .toolbar { display: none; }
+body.focus-mode .filelist { display: none; }
+
+/* ---------- 自定义输入框（替代 window.prompt） ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  width: min(420px, 86vw);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+}
+.modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  font-size: 13.5px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-soft);
+  color: var(--text);
+  outline: none;
+}
+.modal-input:focus { border-color: var(--accent); }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.modal-btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: pointer;
+}
+.modal-btn:hover { border-color: var(--accent); }
+.modal-btn.ok.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* 选项弹窗（插入图片选「链接 / 本地」等） */
+.modal-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.modal-btn.choice {
+  width: 100%;
+  text-align: center;
+  padding: 9px 10px;
+  font-size: 13.5px;
+}
+
+/* ---------- 预览中的图片占位块（大文档不解码 base64，点击再展开） ---------- */
+.img-ph {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: var(--bg-soft);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+.img-ph:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.img-expanded {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+/* ---------- 导出下拉菜单 ---------- */
+.dropdown { position: relative; }
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  min-width: 150px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.menu button {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.menu button:hover { background: var(--bg-elev); }
+.menu .mi-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+/* ---------- 右键菜单（Typora 风格，支持多级子菜单） ---------- */
+.ctx-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 176px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  font-size: 13px;
+  user-select: none;
+}
+html.light .ctx-menu { box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16); }
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ctx-item:hover:not(.disabled),
+.ctx-item.open { background: var(--accent-soft); }
+.ctx-item.disabled { color: var(--text-dim); cursor: default; opacity: 0.55; }
+.ctx-item.danger:hover:not(.disabled) { background: var(--danger); color: #fff; }
+
+.ctx-label { flex: 1; }
+/* 快捷键提示：右对齐、弱化 */
+.ctx-accel { color: var(--text-dim); font-size: 11.5px; margin-left: auto; }
+.ctx-item:hover:not(.disabled) .ctx-accel { color: inherit; opacity: 0.75; }
+.ctx-arrow { color: var(--text-dim); margin-left: auto; font-size: 15px; line-height: 1; }
+.ctx-item:hover .ctx-arrow { color: inherit; }
+
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+/* ---------- 查找 / 替换 面板 ---------- */
+.find-panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.find-input {
+  height: 28px;
+  width: 180px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.find-input:focus { border-color: var(--accent); }
+.find-opt {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.tbtn.small { height: 26px; padding: 0 10px; font-size: 12px; }
+.find-status { font-size: 12px; color: var(--text-dim); margin-left: 4px; min-width: 120px; }
+
+/* 查找命中高亮：用醒目的黄底替代系统默认蓝色选区，
+   源码区(textarea)与富文本区都覆盖，保证"点下一个能看见跳到哪" */
+.source-input::selection,
+.rich-input ::selection,
+.rich-input::selection {
+  background: #ffd24d;
+  color: #1a1a1a;
+}
+html.light .source-input::selection,
+html.light .rich-input ::selection,
+html.light .rich-input::selection {
+  background: #ffe08a;
+  color: #1a1a1a;
+}
+
+/* ---------- 专注模式增强：富文本淡化非当前段落 + 源码居中 ---------- */
+body.focus-mode .rich-input p,
+body.focus-mode .rich-input li,
+body.focus-mode .rich-input blockquote,
+body.focus-mode .rich-input h1,
+body.focus-mode .rich-input h2,
+body.focus-mode .rich-input h3,
+body.focus-mode .rich-input h4,
+body.focus-mode .rich-input h5,
+body.focus-mode .rich-input h6,
+body.focus-mode .rich-input pre { opacity: 0.32; transition: opacity 0.2s; }
+body.focus-mode .rich-input .focus-active { opacity: 1; }
+body.focus-mode .panes { max-width: 920px; margin: 0 auto; }

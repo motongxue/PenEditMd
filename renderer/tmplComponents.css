@@ -1,0 +1,210 @@
+/* 排版组件（tmpl-*）：主色仅作 10% 强调点缀，大面积用中性灰；
+ * 统一圆角 6–8px、细腻描边、充足留白——克制即高级感（参考秀米/135 简约风）。
+ *
+ * 本文件被两处消费：
+ *   1) main.js 直接 import（预览区 / 富文本编辑区实时生效）；
+ *   2) themeCss.js 以 ?raw 读入，拼进 PNG / 独立 HTML 导出的 <style>，
+ *      保证「所见即所得」——导出物与预览用同一份组件样式。
+ * 因此这里只允许出现 .tmpl-* 相关选择器，不要塞应用外壳样式。 */
+.tmpl-keep { margin: 14px 0; }
+.tmpl-badge {
+  display: inline-block; background: var(--tmpl-accent, #1F2328); color: #fff;
+  border-radius: 5px; padding: 1px 8px; font-size: 12px; font-weight: 700;
+  margin-right: 8px; vertical-align: middle; line-height: 1.6;
+}
+/* 引用/提示：弱化底色 + 极淡描边（不再用主色左边框，去 AI 味） */
+.tmpl-infocard {
+  background: var(--tmpl-surface, #f6f7f9); border: 1px solid var(--tmpl-border, #eceef1);
+  border-radius: 6px; padding: 12px 14px; color: #3a3f47;
+}
+.tmpl-ic-cap { font-weight: 700; color: var(--tmpl-accent, #1F2328); margin-bottom: 4px; font-size: 14px; }
+/* 数据小卡：数字点缀，不大色块 */
+.tmpl-datacard {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  background: var(--tmpl-surface, #f6f7f9); border: 1px solid var(--tmpl-border, #eceef1); border-radius: 8px; padding: 14px 16px;
+}
+.tmpl-big { font-size: 26px; font-weight: 700; color: var(--tmpl-accent, #1F2328); line-height: 1.2; }
+.tmpl-cap { font-size: 12px; color: #9aa0a6; }
+.tmpl-imgtxt { display: flex; gap: 14px; align-items: center; }
+.tmpl-it-img {
+  flex: 0 0 120px; height: 90px; border-radius: 8px; background: #eef0f3; border: 1px solid var(--tmpl-border, #e4e7eb);
+  color: #9aa0a6; display: flex; align-items: center; justify-content: center; font-size: 12px;
+}
+.tmpl-it-body { flex: 1; }
+.tmpl-it-cap { font-weight: 700; color: var(--tmpl-accent, #1F2328); margin-bottom: 4px; font-size: 14px; }
+/* 目录：中性底 + 极淡描边 */
+.tmpl-toc {
+  background: var(--tmpl-surface, #f6f7f9); border: 1px solid var(--tmpl-border, #eceef1);
+  border-radius: 6px; padding: 12px 14px;
+}
+.tmpl-toc-title { font-weight: 700; color: #3a3f47; margin-bottom: 6px; }
+.tmpl-toc a { display: block; color: var(--tmpl-accent, #1F2328); text-decoration: none; padding: 3px 0; font-size: 14px; }
+.tmpl-toc-item { color: #3a3f47; font-size: 14px; padding: 3px 0; }
+.tmpl-toc-sub { padding-left: 18px; color: #6b7280; font-size: 13px; }
+/* 作者名片：中性底细边框 */
+.tmpl-author {
+  display: flex; align-items: center; gap: 12px; background: var(--tmpl-surface, #f6f7f9);
+  border: 1px solid var(--tmpl-border, #eceef1); border-radius: 8px; padding: 12px 14px;
+}
+.tmpl-avatar {
+  flex: 0 0 48px; height: 48px; border-radius: 50%; background: var(--tmpl-accent-soft, #F6F8FA);
+  color: var(--tmpl-accent, #1F2328); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+}
+.tmpl-a-name { font-weight: 700; color: #2b2f36; }
+.tmpl-a-bio { font-size: 12px; color: #9aa0a6; }
+.tmpl-qr {
+  margin-left: auto; flex: 0 0 56px; height: 56px; border: 1px dashed var(--tmpl-divider, #c9cdd4);
+  border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px;
+  color: #9aa0a6; text-align: center;
+}
+.tmpl-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.tmpl-tag {
+  display: inline-block; padding: 3px 11px; border-radius: 999px; background: var(--tmpl-surface, #f6f7f9);
+  color: #6b7280; font-size: 12px; font-weight: 600; border: 1px solid var(--tmpl-border, #e4e7eb);
+}
+.tmpl-tag-accent { background: var(--tmpl-accent, #1F2328); color: #fff; border-color: transparent; }
+.tmpl-timeline { border-left: 2px solid var(--tmpl-divider, #d8dce1); padding-left: 20px; margin-left: 8px; }
+.tmpl-tl-item { position: relative; margin: 12px 0; }
+.tmpl-tl-dot {
+  position: absolute; left: -27px; top: 4px; width: 10px; height: 10px;
+  border-radius: 50%; background: #fff; border: 2px solid var(--tmpl-accent, #1F2328);
+}
+.tmpl-tl-time { font-weight: 700; color: var(--tmpl-accent, #1F2328); }
+.tmpl-tl-text { color: #3a3f47; }
+/* 步骤条：编号圆点 + 细连接线（教程/流程类文章常用） */
+.tmpl-step { position: relative; display: flex; gap: 12px; padding-bottom: 14px; }
+.tmpl-step:last-child { padding-bottom: 0; }
+.tmpl-step::before {
+  content: ""; position: absolute; left: 13px; top: 30px; bottom: 0; width: 2px; background: var(--tmpl-border, #e4e7eb);
+}
+.tmpl-step:last-child::before { display: none; }
+.tmpl-step-no {
+  position: relative; z-index: 1; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--tmpl-accent-soft, #F6F8FA); color: var(--tmpl-accent, #1F2328);
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+}
+.tmpl-step-body { flex: 1; padding-top: 3px; }
+.tmpl-step-title { font-weight: 700; color: #2b2f36; font-size: 14px; }
+.tmpl-step-text { color: #6b7280; font-size: 13px; margin-top: 2px; }
+
+/* —— 扩充组件（标题变体 / 图文 / 卡片 / 结尾引导） —— */
+.preview.markdown-body .tmpl-hline h2,
+.rich-input .tmpl-hline h2,
+.preview.markdown-body .tmpl-hfill h2,
+.rich-input .tmpl-hfill h2,
+.preview.markdown-body .tmpl-hsub h1,
+.rich-input .tmpl-hsub h1,
+.markdown-body .tmpl-hline h2,
+.markdown-body .tmpl-hfill h2,
+.markdown-body .tmpl-hsub h1 {
+  border-left: 0; border-bottom: 0; margin: 0; padding: 0;
+}
+/* 线框标题：上下细线夹标题（秀米风，文艺克制，去大色块） */
+.tmpl-hline {
+  border-top: 1px solid var(--tmpl-border, #e2e5e9); border-bottom: 1px solid var(--tmpl-border, #e2e5e9);
+  padding: 10px 0; text-align: center;
+}
+.tmpl-hline h2 { color: var(--tmpl-accent, #1F2328); font-weight: 700; font-size: 17px; letter-spacing: 1px; }
+/* 底色标题：浅底 + 极淡描边（去左侧主色粗条，避免 AI 味） */
+.tmpl-hfill {
+  background: var(--tmpl-accent-soft, #F6F8FA); border: 1px solid var(--tmpl-border, #eceef1);
+  border-radius: 4px; padding: 9px 14px;
+}
+.tmpl-hfill h2 { color: var(--tmpl-accent, #1F2328); font-weight: 700; }
+/* 主副标题：左对齐 + 主标题下细分隔（去 PPT 味） */
+.tmpl-hsub { text-align: left; padding: 6px 0; border-bottom: 1px solid var(--tmpl-border, #eceef1); }
+.tmpl-hsub-main { color: var(--tmpl-accent, #1F2328); font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+.tmpl-hsub-sub { color: #9aa0a6; font-size: 13px; }
+/* 圆角配图框：中性灰占位 + 灰边 + 图注灰（图注灰度 60–70%） */
+.tmpl-if-img {
+  height: 160px; border-radius: 8px; background: #eef0f3; border: 1px solid var(--tmpl-border, #e4e7eb);
+  color: #9aa0a6; display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.tmpl-if-cap { text-align: center; color: #9aa0a6; font-size: 12px; margin-top: 6px; letter-spacing: .3px; }
+/* 九宫格：中性占位 */
+.tmpl-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tmpl-g-cell {
+  aspect-ratio: 1 / 1; border-radius: 8px; background: #eef0f3; border: 1px solid var(--tmpl-border, #e4e7eb);
+  color: #9aa0a6; display: flex; align-items: center; justify-content: center; font-size: 12px;
+}
+/* 留白卡片：中性浅灰底 + 极淡边框（不像大色块）；空内容也可见可点 */
+.tmpl-card {
+  background: var(--tmpl-surface, #f6f7f9); border: 1px solid var(--tmpl-border, #eceef1);
+  border-radius: 8px; padding: 12px 14px; color: #3a3f47;
+  min-height: 72px; display: flex; align-items: center;
+}
+.tmpl-card-body { color: inherit; }
+/* 对话框：中性灰气泡 + 头像主色浅底 */
+.tmpl-dialog { display: flex; gap: 10px; align-items: flex-start; }
+.tmpl-dlg-who {
+  flex: 0 0 36px; height: 36px; border-radius: 50%; background: var(--tmpl-accent-soft, #F6F8FA);
+  color: var(--tmpl-accent, #1F2328); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+}
+.tmpl-dlg-text {
+  flex: 1; background: var(--tmpl-surface, #f6f7f9); border: 1px solid var(--tmpl-border, #eceef1); border-radius: 10px; padding: 10px 12px;
+  color: #3a3f47;
+}
+/* 价格对比：中性卡 + 推荐档主色细边框（去阴影、去大色块） */
+.tmpl-price { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tmpl-p-item {
+  background: #fff; border: 1px solid var(--tmpl-border, #e4e7eb); border-radius: 8px; padding: 14px 10px; text-align: center;
+}
+.tmpl-p-item.tmpl-p-rec {
+  border-color: var(--tmpl-accent, #1F2328); background: var(--tmpl-surface, #fafcfa);
+}
+.tmpl-p-name { font-weight: 700; font-size: 13px; color: #2b2f36; }
+.tmpl-p-num { color: var(--tmpl-accent, #1F2328); font-size: 20px; font-weight: 700; margin: 4px 0; }
+.tmpl-p-desc { font-size: 11px; color: #9aa0a6; }
+/* 结尾引导：中性细虚线（弱化块感） */
+.tmpl-share, .tmpl-fav, .tmpl-like {
+  text-align: center; border: 1px dashed var(--tmpl-divider, #c9cdd4); border-radius: 8px;
+  padding: 12px 14px; background: var(--tmpl-surface, #f6f7f9);
+}
+.tmpl-share-title, .tmpl-fav-title, .tmpl-like-title { font-weight: 700; color: var(--tmpl-accent, #1F2328); }
+.tmpl-share-actions, .tmpl-fav-sub, .tmpl-like-sub { font-size: 13px; color: #9aa0a6; margin-top: 4px; }
+
+/* 组件内图片统一占满容器、不溢出 */
+.tmpl-if-img,
+.tmpl-it-img,
+.tmpl-g-cell,
+.tmpl-avatar,
+.tmpl-qr { overflow: hidden; }
+
+.tmpl-if-img img, img.tmpl-if-img,
+.tmpl-it-img img, img.tmpl-it-img,
+.tmpl-g-cell img, img.tmpl-g-cell,
+.tmpl-avatar img, img.tmpl-avatar,
+.tmpl-qr img, img.tmpl-qr {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tmpl-if-img img, img.tmpl-if-img,
+.tmpl-it-img img, img.tmpl-it-img,
+.tmpl-g-cell img, img.tmpl-g-cell,
+.tmpl-qr img, img.tmpl-qr { border-radius: 8px; }
+
+.tmpl-avatar img, img.tmpl-avatar { border-radius: 50%; }
+
+/* 音频 / 视频组件 */
+.tmpl-audio,
+.tmpl-video {
+  border: 1px solid var(--tmpl-border, #e4e7eb);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--tmpl-surface, #f6f7f9);
+}
+.tmpl-audio audio,
+.tmpl-video video {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+}
+.tmpl-media-cap {
+  text-align: center;
+  color: #9aa0a6;
+  font-size: 12px;
+  margin-top: 8px;
+}

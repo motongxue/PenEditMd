@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+python-server/.venv/
+
+# Python build artifacts
+python-server/build/
+python-server/dist/
+python-server/__pycache__/
+*.pyc
+*.spec
+
+# Electron build output
+dist-electron/
+out/
+dist/
+
+# Renderer debug / temp build artifacts
+renderer/dist-*/
+renderer/renderer/dist-*/
+vite.config.deploy.mjs.timestamp-*.mjs
+build.log
+
+# 参考源码（审计用，非项目代码）
+.ref/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

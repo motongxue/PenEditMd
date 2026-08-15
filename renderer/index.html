@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- 安全：限制资源来源，防 XSS / 外联脚本注入。
+       只允许同源脚本、内联样式、本地与后端连接；图片放行 data:/file:/https:。 -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; img-src 'self' data: file: https: http:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' http://127.0.0.1:8765; object-src 'none'; base-uri 'self';" />
+  <title>笔削 PenEditMd</title>
+</head>
+<body>
+  <!-- 极简工具栏：默认只显示第一行（应用操作 + 模式切换），
+       鼠标移入工具栏自动向下展开第二行（格式按钮组），保证所有功能可见。
+       查找/替换入口为 Ctrl+F 快捷键与右键菜单，不占工具栏。 -->
+  <div id="toolbar" class="toolbar">
+    <div class="tb-row tb-row-1">
+      <div class="tb-group app">
+        <button id="btn-open" class="tbtn" title="打开文件">打开</button>
+        <button id="btn-save" class="tbtn" disabled title="保存 (Ctrl+S)">保存</button>
+        <button id="btn-undo" class="tbtn" disabled title="撤销 (Ctrl+Z)">⤺</button>
+        <button id="btn-redo" class="tbtn" disabled title="重做 (Ctrl+Y)">⤻</button>
+        <button id="btn-copy" class="tbtn" disabled title="复制 Markdown">复制</button>
+        <div class="dropdown">
+          <button id="btn-export" class="tbtn" disabled title="导出">导出 ▾</button>
+        </div>
+        <button id="btn-ai" class="tbtn" title="AI 处理（润色/改写/续写/翻译/摘要/标题标签/全文排版）">AI ✨</button>
+        <div class="dropdown">
+          <button id="btn-ai-model" class="tbtn ai-model-btn" title="切换 AI 模型">未配置模型 ▾</button>
+          <div id="ai-model-menu" class="ai-menu hidden"></div>
+        </div>
+        <div class="pub-combo" id="pub-combo" title="文章排版：选择手动排版（主题 / 组件）或 AI 排版（自动生成公众号样式）">
+          <div class="dropdown">
+            <button id="btn-publish" class="tbtn" disabled title="文章排版：选择手动排版或 AI 排版">文章排版 ▾</button>
+            <div id="pub-mode-menu" class="ai-menu hidden">
+              <button type="button" data-mode="none" class="ai-menu-none" title="恢复原始状态"></button>
+              <button type="button" data-mode="manual">手动排版</button>
+              <button type="button" data-mode="ai">AI 排版</button>
+            </div>
+          </div>
+          <button id="btn-template" class="tbtn hidden" disabled title="公众号/头条主题">主题</button>
+          <button id="btn-components" class="tbtn hidden" disabled title="插入排版组件（光标处套用）">组件</button>
+          <button id="btn-copy-wechat" class="tbtn hidden" disabled title="复制到公众号（粘后台）">复制到公众号</button>
+          <button id="btn-ai-layout" class="tbtn hidden" title="AI 自动排版：生成公众号兼容样式 HTML">AI 排版</button>
+          <button id="btn-ai-view" class="tbtn hidden" title="查看上次 AI 排版结果（不重新生成）">查看排版</button>
+          <button id="btn-ai-history" class="tbtn hidden" title="查看 AI 排版历史记录（可恢复/删除）">历史</button>
+        </div>
+        <button id="btn-theme" class="tbtn ghost" title="切换明暗主题">🌓</button>
+      </div>
+      <span class="tb-spacer"></span>
+      <div class="tb-group mode">
+        <button class="tbtn seg active" data-mode="split" title="分屏(编辑+预览)">分屏</button>
+        <button class="tbtn seg" data-mode="source" title="仅编辑区">编辑</button>
+        <button class="tbtn seg" data-mode="preview" title="仅预览">预览</button>
+        <span class="tb-sep"></span>
+        <button id="btn-rich" class="tbtn seg active" title="富文本模式（类 Word）">富文本</button>
+        <button id="btn-source" class="tbtn seg" title="源码模式（Markdown 原文）">源码</button>
+        <span class="tb-sep"></span>
+        <button id="btn-focus" class="tbtn ghost" title="专注模式(隐藏工具栏)">专注</button>
+      </div>
+    </div>
+    <div class="tb-row tb-row-2">
+      <div class="tb-group format" id="format-group"></div>
+    </div>
+  </div>
+
+  <!-- 查找 / 替换 面板 -->
+  <div id="find-panel" class="find-panel hidden">
+    <input id="find-input" class="find-input" type="text" placeholder="查找" />
+    <input id="replace-input" class="find-input" type="text" placeholder="替换为（可空）" />
+    <label class="find-opt"><input type="checkbox" id="find-regex" /> 正则</label>
+    <label class="find-opt"><input type="checkbox" id="find-case" /> 区分大小写</label>
+    <label class="find-opt"><input type="checkbox" id="find-word" /> 全词</label>
+    <button id="find-prev" class="tbtn small" title="上一个匹配 (Shift+Enter)">上一个</button>
+    <button id="find-next" class="tbtn small" title="下一个匹配 (Enter / F3)">下一个</button>
+    <button id="find-replace" class="tbtn small">替换</button>
+    <button id="find-replace-all" class="tbtn small">全部替换</button>
+    <button id="find-undo" class="tbtn small" disabled title="撤销上一次替换 / 全部替换">撤销替换</button>
+    <span id="find-status" class="find-status"></span>
+    <button id="find-close" class="tbtn ghost small" title="关闭查找 (Esc)">✕</button>
+  </div>
+
+  <main class="workspace">
+    <!-- 拖拽覆盖层：平时隐藏，把文件拖到窗口任意位置时才浮现。
+         （旧版这里是必经的空状态页，导致「不上传文件就没法写字」） -->
+    <section id="dropzone" class="dropzone hidden">
+      <div class="drop-inner">
+        <div class="drop-icon">📄</div>
+        <h2>松手即可转换</h2>
+        <p>支持 PDF / Word / Excel / PPT / 图片 / 音频 / HTML / 电子书 等 20+ 种格式</p>
+        <p class="hint" id="status-hint">后端连接中…</p>
+      </div>
+    </section>
+
+    <!-- 编辑区：启动即可用，无需先上传文件 -->
+    <section id="result" class="result">
+      <!-- 侧栏折叠开关：贴着侧栏右边缘的明显竖条按钮，展开/折叠都靠它 -->
+      <button id="btn-sidebar-toggle" class="sidebar-toggle" title="折叠 / 展开侧栏">‹</button>
+      <aside class="filelist">
+        <div class="sidebar-tabs">
+          <button class="tab" data-tab="tree" title="文档树（工作文件夹）">文档树</button>
+          <button class="tab active" data-tab="session" title="本次会话文档">会话</button>
+          <button class="tab" data-tab="notes" title="便签">便签</button>
+        </div>
+
+        <!-- 文档树：浏览磁盘工作文件夹 -->
+        <div class="tab-panel" data-panel="tree">
+          <div class="filelist-head">
+            <div class="filelist-actions">
+              <button id="btn-select-folder" class="btn ghost small" title="添加工作文件夹（可添加多个，并列显示在文档树）">添加文件夹</button>
+              <button id="btn-tree-refresh" class="btn ghost small" title="刷新文档树">刷新</button>
+            </div>
+          </div>
+          <div class="filelist-bottom">
+            <div id="doc-tree" class="doc-tree"></div>
+          </div>
+        </div>
+
+        <!-- 会话文档列表（导入/转换/新建，内存态） -->
+        <div class="tab-panel hidden" data-panel="session">
+          <div class="filelist-head">
+            <div class="filelist-actions">
+              <button id="btn-new" class="btn ghost small" title="新建空白文档 (Ctrl+N)">新建</button>
+              <button id="btn-open-3" class="btn ghost small" title="打开文件转换">导入</button>
+              <button id="btn-clear" class="btn ghost small" title="清空全部文档">清空</button>
+            </div>
+          </div>
+          <div class="filelist-bottom">
+            <ul id="files"></ul>
+            <div class="filelist-count"><span id="file-count">0 个文件</span></div>
+          </div>
+        </div>
+
+        <!-- 便签 -->
+        <div class="tab-panel hidden" data-panel="notes">
+          <div class="filelist-head">
+            <div class="filelist-actions">
+              <button id="btn-new-note" class="btn ghost small" title="新建便签">新建便签</button>
+            </div>
+            <span class="note-hint" title="右键列表中的便签可重命名 / 置顶 / 设开机启动">右键便签可重命名、置顶、设开机启动</span>
+          </div>
+          <label class="note-setting" title="开启后，关闭应用（退出）便签仍保留在桌面显示">
+            <input type="checkbox" id="keep-notes-on-close" />
+            <span>关闭应用时显示便签</span>
+          </label>
+          <div class="filelist-bottom">
+            <ul id="notes-list" class="notes-list"></ul>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 公众号排版左栏已移至工具栏虚线组合框（#196）：公众号排版 / 主题 / 组件 / 复制到公众号 同框 -->
+      <div class="editor-area">
+        <!-- #8：大文档图片被折叠时的一次性提示条 -->
+        <div id="img-fold-tip" class="img-fold-tip hidden">
+          <span>由于文档较大，为方便编辑图片已折叠，点击后可查看。</span>
+          <button id="img-fold-tip-close" type="button" title="知道了">✕</button>
+        </div>
+        <!-- 导出校验提示：内容不符合模板要求时在编辑区顶部列出问题并阻止导出 -->
+        <div id="export-tip" class="export-tip hidden">
+          <div class="export-tip-head">
+            ⚠️ 导出「<span id="export-tip-target"></span>」前请修正以下问题：
+            <button id="export-tip-close" type="button" title="关闭提示">✕</button>
+          </div>
+          <ul id="export-tip-list"></ul>
+        </div>
+        <!-- 富文本编辑区：鼠标悬停段落时显示其格式（如「一级标题」「引用」） -->
+        <div id="block-format-tip" class="block-format-tip hidden"></div>
+        <!-- 双栏：左编辑区（富文本/源码二选一） + 右实时预览 -->
+        <div id="panes" class="panes split">
+          <div class="pane pane-source">
+            <textarea id="source-input" class="source-input" spellcheck="false"
+              placeholder="在此输入 Markdown，或把文件拖进来转换…"></textarea>
+            <div id="rich-input" class="rich-input" contenteditable="true"
+              placeholder="在此输入内容，或把文件拖进来转换…"></div>
+          </div>
+          <div id="resizer" class="resizer" title="拖动调整宽度"></div>
+          <div class="pane pane-preview">
+            <!-- AI 排版分屏预览工具条（生成后显示在预览区顶部，替代弹出预览） -->
+            <div id="preview-ai-bar" class="preview-ai-bar hidden">
+              <div class="pab-toggle">
+                <button type="button" class="pab-av active" data-ai-view="layout">AI 排版</button>
+                <button type="button" class="pab-av" data-ai-view="original">原文</button>
+              </div>
+              <span class="pab-spacer"></span>
+              <button type="button" id="preview-ai-edit" class="pab-btn active" title="开启后可直接在预览里改文字；复制 / 保存 / 推送都用改后的内容">✏️ 可编辑</button>
+              <button type="button" id="preview-ai-history" class="pab-btn" title="查看 AI 排版历史记录">历史</button>
+              <button type="button" id="preview-ai-copy" class="pab-btn" title="复制排版 HTML 到剪贴板（去公众号后台 Ctrl+V）">复制 HTML</button>
+              <button type="button" id="preview-ai-push" class="pab-btn" title="直接推送到微信公众号草稿箱（需先在 设置 → 公众号推送 填凭证）">推送公众号</button>
+              <button type="button" id="preview-ai-save" class="pab-btn" title="保存排版 HTML 到本地文件">保存 HTML</button>
+              <button type="button" id="preview-ai-close" class="pab-btn ghost" title="退出 AI 排版预览，恢复正文预览">✕</button>
+            </div>
+            <div id="preview" class="preview markdown-body"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="backend-status" class="dot gray" title="后端状态"></span>
+    <span id="status">就绪</span>
+    <span class="status-spacer"></span>
+    <span id="char-count" class="char-count" title="当前文档字数">0 字</span>
+    <span id="token-count" class="token-count" title="本次 AI 调用的 token 用量"></span>
+  </footer>
+
+  <!-- 导出下拉菜单：挂在 body 上（fixed 定位），避免被工具栏折叠/展开遮挡 -->
+  <div id="export-menu" class="menu hidden">
+    <button data-export="md">Markdown (.md)</button>
+    <button data-export="html">HTML (.html)</button>
+    <button data-export="pdf">PDF (.pdf)</button>
+    <div class="menu-sep"></div>
+    <button data-export="png">图片长图 (.png)</button>
+    <button data-export="docx">Word (.docx)</button>
+    <button data-export="epub">电子书 (.epub)</button>
+  </div>
+
+  <!-- 发布下拉菜单：公众号各路径，让用户每次自选 -->
+  <div id="publish-menu" class="menu hidden">
+    <button data-pub="wechat-html">复制到公众号（粘后台）</button>
+  </div>
+
+  <!-- 发布预览：复制前先看一眼各平台实际效果，避免粘到后台才发现样式跑偏 -->
+  <div id="publish-modal" class="modal hidden">
+    <div class="modal-card pub-card">
+      <div class="modal-head">
+        <div class="modal-title">发布预览</div>
+        <button id="publish-close" class="icon-btn" title="关闭">✕</button>
+      </div>
+      <div class="pub-resize" id="pub-resize" title="拖拽放大 / 缩小">⤡</div>
+      <div class="pub-bar">
+        <div class="pub-tabs" id="publish-tabs">
+          <button class="pub-tab active" data-platform="wechat">公众号</button>
+        </div>
+        <div class="pub-widths" id="publish-widths">
+          <button class="pub-w active" data-w="375">手机</button>
+          <button class="pub-w" data-w="640">中屏</button>
+          <button class="pub-w" data-w="900">宽屏</button>
+        </div>
+        <div class="pub-ai-toggle hidden" id="publish-ai-toggle">
+          <button type="button" class="pub-av active" data-ai-view="layout">AI 排版</button>
+          <button type="button" class="pub-av" data-ai-view="original">原文</button>
+        </div>
+        <label class="pub-src"><input type="checkbox" id="publish-src-toggle" /> 看源码</label>
+      </div>
+      <div class="pub-stage">
+        <iframe id="publish-frame" title="发布预览"></iframe>
+        <textarea id="publish-src" class="hidden" readonly spellcheck="false"></textarea>
+      </div>
+      <div class="pub-foot">
+        <div class="pub-hint" id="publish-hint"></div>
+        <div class="pub-actions">
+          <button id="publish-save" class="btn-ghost hidden">保存 HTML</button>
+          <button id="publish-copy-src" class="btn-ghost">复制源码</button>
+          <button id="publish-copy" class="btn-primary">复制到公众号</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 排版进行中遮罩 -->
+  <div id="ai-busy" class="ai-busy hidden">
+    <div class="ai-busy-box">
+      <div class="ai-busy-spinner"></div>
+      <div class="ai-busy-text">正在排版中…</div>
+    </div>
+  </div>
+
+  <!-- AI 排版历史记录面板 -->
+  <div id="ai-history-panel" class="ai-history-panel hidden">
+    <div class="ahp-head">
+      <span>AI 排版历史</span>
+      <span class="ahp-clear" id="ai-history-clear" title="清空当前文档的全部历史">清空</span>
+    </div>
+    <div class="ahp-list" id="ai-history-list"></div>
+    <div class="ahp-foot">点击任一条可恢复到预览；右侧 × 删除该条</div>
+  </div>
+
+  <!-- 通用提示弹窗（AI 排版字数/图片拦截等） -->
+  <div id="alert-modal" class="modal hidden">
+    <div class="modal-card alert-card">
+      <div class="modal-head">
+        <div class="modal-title" id="alert-title">提示</div>
+        <button id="alert-close" class="icon-btn" type="button" title="关闭">✕</button>
+      </div>
+      <div class="alert-body" id="alert-body"></div>
+      <div class="alert-foot">
+        <button id="alert-ok" class="btn-primary" type="button">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 排版主题选择弹窗（可选：选主题 / 让 AI 决定） -->
+  <div id="ai-theme-modal" class="modal hidden">
+    <div class="modal-card ai-theme-card">
+      <div class="modal-head">
+        <span>AI 排版 · 选择主题</span>
+        <div class="modal-head-actions">
+          <button id="ai-theme-skip" class="tbtn ai-theme-skip-btn" title="让 AI 按文章自行选择最契合主题">让 AI 决定</button>
+          <button id="ai-theme-close" type="button" title="关闭">✕</button>
+        </div>
+      </div>
+      <div class="ai-theme-body">
+        <div class="ai-theme-hint">选一套主题让 AI 按此风格排版；或点「让 AI 决定」由 AI 按文章智能选择（也可不选）。</div>
+        <div id="ai-theme-grid" class="ai-theme-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主题选择弹窗（参考秀米组件化 + 135 一键配色 / 分类） -->
+  <div id="theme-modal" class="modal hidden">
+    <div class="modal-card theme-card-lg">
+      <div class="modal-head">
+        <span>主题（公众号 / 头条）</span>
+        <div class="modal-head-actions">
+          <button id="theme-clear" class="tbtn ghost sm" title="恢复默认样式">清除主题</button>
+          <button id="theme-close" type="button" title="关闭">✕</button>
+        </div>
+      </div>
+      <div class="theme-body">
+        <div class="theme-section">
+          <div class="theme-section-title">① 主题色（一键换色，不替换正文）</div>
+          <div id="theme-swatches" class="theme-swatches"></div>
+          <label class="theme-custom">自定义主色 <input type="color" id="theme-custom" value="#2e7d32" /></label>
+          <div class="theme-foot-hint">主题色作用于预览与导出 docx；组件可在任意位置插入（点「组件」按钮）。</div>
+        </div>
+        <div class="theme-section">
+          <div class="theme-section-title">② 整套主题（点击载入骨架到编辑区）</div>
+          <div id="theme-cats" class="theme-cats"></div>
+          <div id="theme-list" class="theme-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 排版组件库弹层（光标处插入；窗口样式，悬停展开） -->
+  <div id="comp-pop" class="modal-card comp-pop hidden">
+    <div class="modal-head">
+      <span>插入排版组件（按当前主题色渲染）</span>
+      <div class="modal-head-actions">
+        <button id="comp-toc-refresh" type="button" class="comp-head-btn" title="按当前正文标题重新生成目录组件">更新目录</button>
+        <button id="comp-close" type="button" title="关闭">✕</button>
+      </div>
+    </div>
+    <div id="comp-list" class="comp-list"></div>
+  </div>
+
+  <!-- 选中即套（秒刷）浮动样式条 -->
+  <div id="sel-style-bar" class="sel-style-bar hidden">
+    <button type="button" data-act="h1" title="一级标题">H1</button>
+    <button type="button" data-act="h2" title="二级标题">H2</button>
+    <button type="button" data-act="quote" title="引用">引用</button>
+    <button type="button" data-act="list" title="列表">列表</button>
+    <button type="button" data-act="bold" title="加粗">B</button>
+    <button type="button" data-act="ai" title="AI 处理（润色/改写/续写/翻译/摘要/标题标签）">AI ✨</button>
+  </div>
+
+  <!-- 选区 AI 下拉菜单 -->
+  <div id="ai-menu" class="ai-menu hidden">
+    <button type="button" data-ai="polish">润色</button>
+    <button type="button" data-ai="rewrite">改写</button>
+    <button type="button" data-ai="continue">续写</button>
+    <button type="button" data-ai="translate">翻译</button>
+    <button type="button" data-ai="summary">摘要</button>
+    <button type="button" data-ai="title">自动标题 / 标签</button>
+    <button type="button" data-ai="layout">全文 AI 排版</button>
+  </div>
+
+
+  <div id="overlay" class="overlay hidden">
+    <div class="spinner"></div>
+    <p id="overlay-text">转换中…</p>
+  </div>
+
+  <!-- 可视化样式面板：调主题字段，实时预览 -->
+  <div id="style-modal" class="modal hidden">
+    <div class="modal-card style-card-lg">
+      <div class="modal-head">
+        <span>样式定制（实时预览 · 套用到公众号导出）</span>
+        <div class="modal-head-actions">
+          <button id="style-reset" type="button" class="tbtn ghost sm" title="恢复当前主题的预设样式">恢复预设</button>
+          <button id="style-close" type="button" title="关闭">✕</button>
+        </div>
+      </div>
+      <div id="style-body" class="style-body"></div>
+    </div>
+  </div>
+
+  <!-- 图片放大查看（灯箱）：右键图片「放大查看」时弹出 -->
+  <div id="img-lightbox" class="lightbox hidden">
+    <img id="img-lightbox-img" alt="放大查看" />
+    <button id="img-lightbox-close" class="lightbox-close" title="关闭">✕</button>
+    <div class="lightbox-hint">点击空白处或按 Esc 关闭</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

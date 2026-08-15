@@ -1,0 +1,93 @@
+{
+  "name": "peneditmd",
+  "version": "0.1.0",
+  "description": "PenEditMd：基于微软 markitdown 的桌面应用，把各种文件一键转换为 Markdown，并支持编辑/排版/导出",
+  "main": "main.js",
+  "author": "WorkBuddy",
+  "license": "MIT",
+  "scripts": {
+    "setup:python": "node scripts/setup-python.js",
+    "dev": "vite",
+    "build:renderer": "vite build --config vite.config.deploy.mjs",
+    "start": "vite build --config vite.config.deploy.mjs && electron .",
+    "build": "vite build --config vite.config.deploy.mjs && electron-builder",
+    "build:python": "cd python-server && python build.py --clean",
+    "test:img": "node scripts/test-img-placeholder.cjs",
+    "test:l3": "node --experimental-loader ./scripts/css-stub-loader.mjs scripts/test-l3-export.mjs",
+    "test:wechat": "node --experimental-loader ./scripts/css-stub-loader.mjs scripts/test-wechat.mjs"
+  },
+  "dependencies": {
+    "dompurify": "^3.1.6",
+    "highlight.js": "^11.9.0",
+    "katex": "^0.16.47",
+    "marked": "^12.0.0",
+    "mermaid": "^11.16.1",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.0",
+    "jsdom": "^24.0.0",
+    "vite": "^5.4.0"
+  },
+  "build": {
+    "appId": "com.workbuddy.peneditmd",
+    "productName": "PenEditMd",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/notes.html",
+      "dist/renderer/**/*",
+      "LICENSE",
+      "THIRD-PARTY-LICENSES.md"
+    ],
+    "extraResources": [
+      {
+        "from": "python-server/dist/markitdown-server",
+        "to": "markitdown-server"
+      },
+      {
+        "from": "assets/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "afterPack": "./scripts/afterPack.cjs",
+    "fileAssociations": [
+      { "ext": "md", "name": "Markdown 文档", "role": "Editor", "icon": "assets/icon.ico" },
+      { "ext": "markdown", "name": "Markdown 文档", "role": "Editor", "icon": "assets/icon.ico" },
+      { "ext": "mdx", "name": "MDX 文档", "role": "Editor", "icon": "assets/icon.ico" },
+      { "ext": "txt", "name": "文本文档", "role": "Editor", "icon": "assets/icon.ico" },
+      { "ext": "doc", "name": "Word 文档", "role": "Editor", "icon": "assets/icon.ico" },
+      { "ext": "docx", "name": "Word 文档", "role": "Editor", "icon": "assets/icon.ico" }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "license.rtf",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "uninstallDisplayName": "PenEditMd",
+      "include": "build/installer.nsh",
+      "runAfterFinish": true
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility"
+    }
+  }
+}
