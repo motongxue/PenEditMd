@@ -2654,7 +2654,7 @@ async function runAiLayout(theme) {
   aiDbg(`runAiLayout: 发往AI的消息数=${messages.length}, 首条role=${messages[0].role}, 总字符≈${totalChars}`);
   showAiBusy("正在排版中…");
   try {
-    const raw = await askAI(messages);
+    const raw = await askAI(messages, { maxTokens: 32768 });
     const truncated = !!(lastAiResponse && lastAiResponse.truncated);
     aiLayoutLog(`[步骤7] AI 返回: raw==null? ${raw == null}; 返回长度=${raw ? raw.length : 0}; 截断=${truncated}; (详见 ai-debug.log 的 [req]/[resp])`);
     aiDbg(`runAiLayout: askAI 返回 raw==null? ${raw == null}; raw长度=${raw ? raw.length : 0}`);
