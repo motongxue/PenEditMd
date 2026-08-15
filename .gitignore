@@ -23,6 +23,9 @@ build.log
 # Internal dev docs (not for public repo)
 docs/
 
+# npm config (may carry private registry token locally; keep out of repo)
+.npmrc
+
 # 参考源码（审计用，非项目代码）
 .ref/
 
