@@ -1083,20 +1083,23 @@ ipcMain.handle("session:load", () => {
 // 避开浏览器 CORS，且 Key 只在主进程内存/网络层，不进页面脚本上下文。
 ipcMain.handle("ai:chat", async (event, payload) => {
   try {
-    const { baseURL, apiKey, model, messages, temperature = 0.7, maxTokens = 2048 } =
+    const { baseURL, apiKey, model, messages, temperature = 0.7, maxTokens = 2048, timeoutMs } =
       payload || {};
     if (!baseURL || !apiKey || !model)
       return { ok: false, error: "AI 未配置：请在设置中填写接口地址、密钥与模型" };
     if (!Array.isArray(messages) || !messages.length)
       return { ok: false, error: "消息为空" };
     const url = String(baseURL).replace(/\/+$/, "") + "/chat/completions";
+    // 请求超时（毫秒）：优先用调用方显式传入（如 AI 排版给更长兜底），其次模型设置，
+    // 最后兜底 60s。AI 排版带大 max_tokens + 整篇提示词，慢模型很容易超 60s，故需可配/可长。
+    const waitMs = Math.max(5000, Number(timeoutMs) || 60000);
     // 已知走「推理(reasoning)」的模型：默认会把 token 预算耗在思考上，导致 content 为空。
     // 排版/润色这类任务不需要推理，关闭它让模型直接产出 content。按需在此清单扩展。
     const REASONING_MODELS = ["deepseek-v4", "deepseek-reasoner", "deepseek-r1"];
     const disableThinking = REASONING_MODELS.some((h) => String(model).includes(h));
-    try { debugAiLog(`[req] model=${model} url=${url} messages=${messages.length} maxTokens=${maxTokens} temperature=${temperature} thinking=${disableThinking ? "disabled" : "default"}`); } catch (_) {}
+    try { debugAiLog(`[req] model=${model} url=${url} messages=${messages.length} maxTokens=${maxTokens} temperature=${temperature} timeout=${waitMs}ms thinking=${disableThinking ? "disabled" : "default"}`); } catch (_) {}
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 60000);
+    const timer = setTimeout(() => ctrl.abort(), waitMs);
     let resp;
     try {
       resp = await fetch(url, {
@@ -1156,7 +1159,15 @@ ipcMain.handle("ai:chat", async (event, payload) => {
     }
     return { ok: true, text, usage };
   } catch (e) {
-    return { ok: false, error: (e && e.message) || String(e) };
+    const aborted = e && (e.name === "AbortError" || /abort/i.test(e.message || ""));
+    const msg = (e && e.message) || String(e);
+    try { debugAiLog(`[resp] exception: ${msg}`); } catch (_) {}
+    return {
+      ok: false,
+      error: aborted
+        ? `请求超时或被中止（约 ${Math.round(waitMs / 1000)}s）：AI 排版/长文生成较慢，请到「设置 → AI 模型」把该模型的「请求超时(秒)」调大（建议 ≥300），或换更快的模型`
+        : msg,
+    };
   }
 });
 

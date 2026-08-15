@@ -231,6 +231,7 @@ export function loadAiSettings() {
     model: m.model || "",
     name: m.name || "",
     id: m.id,
+    timeout: typeof m.timeout === "number" ? m.timeout : undefined,
   };
 }
 
@@ -424,10 +425,12 @@ function bindAiModels(overlay) {
     const baseI = form.querySelector(".ai-f-base");
     const keyI = form.querySelector(".ai-f-key");
     const modelI = form.querySelector(".ai-f-model");
+    const timeoutI = form.querySelector(".ai-f-timeout");
     nameI.value = m.name || "";
     baseI.value = m.baseURL || "";
     keyI.value = m.apiKey || "";
     modelI.value = m.model || "";
+    timeoutI.value = m.timeout != null ? m.timeout : "";
     vendorSel.onchange = () => {
       const v = AI_VENDORS.find((x) => x.id === vendorSel.value);
       if (v && v.id !== "custom") {
@@ -449,6 +452,7 @@ function bindAiModels(overlay) {
         baseURL: baseI.value.trim(),
         apiKey: keyI.value.trim(),
         model: modelI.value.trim(),
+        timeout: timeoutI.value.trim() ? Number(timeoutI.value.trim()) : undefined,
       };
       if (!rec.baseURL || !rec.apiKey || !rec.model) {
         alert("接口地址、API Key、模型 都必须填写");
@@ -563,6 +567,10 @@ export function openAiSettingsModal() {
         <label class="settings-field">
           <span class="settings-field-label">API Key</span>
           <input type="password" class="ai-f-key mono settings-input" placeholder="sk-..." spellcheck="false" />
+        </label>
+        <label class="settings-field">
+          <span class="settings-field-label">请求超时(秒)</span>
+          <input type="number" min="5" step="5" class="ai-f-timeout mono settings-input" placeholder="默认 60（AI 排版建议 ≥300）" spellcheck="false" />
         </label>
       </div>
       <div class="modal-actions">

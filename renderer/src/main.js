@@ -2400,12 +2400,14 @@ function updateSelBar(bar) {
 
 /** 统一 AI 调用：成功返回文本，失败返回 null 并已 setStatus 提示 */
 let lastAiResponse = null; // 供上层判断截断（res.truncated）等
-async function askAI(messages, { pending, maxTokens } = {}) {
+async function askAI(messages, { pending, maxTokens, timeoutMs } = {}) {
   const s = loadAiSettings();
   const baseURL = (s.baseURL || "").trim();
   const model = (s.model || "").trim();
   const apiKey = (s.apiKey || "").trim();
-  aiDbg(`askAI: model=${model}, baseURL=${baseURL}, apiKey已配置=${!!apiKey}, messages=${messages.length}`);
+  // 超时：显式传入（如 AI 排版用更长兜底）> 模型设置 > 默认 60s
+  const finalTimeout = timeoutMs || (s.timeout ? s.timeout * 1000 : 60000);
+  aiDbg(`askAI: model=${model}, baseURL=${baseURL}, apiKey已配置=${!!apiKey}, messages=${messages.length}, timeoutMs=${finalTimeout}`);
   if (!baseURL || !apiKey || !model) {
     setStatus("AI 未配置：打开「设置 → AI 模型」填写接口地址 / 密钥 / 模型");
     aiDbg("askAI: 配置缺失，终止");
@@ -2414,7 +2416,7 @@ async function askAI(messages, { pending, maxTokens } = {}) {
   if (pending) setStatus(pending);
   let res;
   try {
-    res = await window.api.aiChat({ baseURL, apiKey, model, messages, maxTokens });
+    res = await window.api.aiChat({ baseURL, apiKey, model, messages, maxTokens, timeoutMs: finalTimeout });
   } catch (e) {
     setStatus("AI 调用失败：" + (e && e.message ? e.message : e));
     return null;
@@ -2603,7 +2605,7 @@ function hideAiBusy() {
   if (el) el.classList.add("hidden");
 }
 
-async function runAiLayout(theme) {
+async function runAiLayout(theme, opts) {
   const f = activeFile();
   // 编辑器缓冲区即最新内容（是否保存到磁盘都不改变它）
   const rawMd = currentMarkdown() || "";
@@ -2647,14 +2649,14 @@ async function runAiLayout(theme) {
   const instruction = buildAiLayoutInstruction(theme && theme.id ? theme.id : null);
   aiLayoutLog(`[步骤5] 注入的提示词(方法论, 取自 gzh-design-skill) ↓↓↓\n${instruction}`);
   aiLayoutLog(`[主题] ${theme && theme.name ? "指定主题：" + theme.name + "（主色 " + theme.mainColor + "）" : "让 AI 自由决定（不指定）"}`);
-  const messages = buildAiLayoutMessages(md, theme);
+  const messages = buildAiLayoutMessages(md, theme, opts);
   const totalChars = messages.reduce((s, m) => s + (m.content || "").length, 0);
   aiLayoutLog(`[步骤6] 发送给 AI 的完整 user 消息: 条数=${messages.length}, role=${messages[0].role}, 总字符≈${totalChars}`);
   aiLayoutLog(`[步骤6] 发送给 AI 的正文 md(实际内容) ↓↓↓\n${md}`);
   aiDbg(`runAiLayout: 发往AI的消息数=${messages.length}, 首条role=${messages[0].role}, 总字符≈${totalChars}`);
   showAiBusy("正在排版中…");
   try {
-    const raw = await askAI(messages, { maxTokens: 32768 });
+    const raw = await askAI(messages, { maxTokens: 32768, timeoutMs: 600000 });
     const truncated = !!(lastAiResponse && lastAiResponse.truncated);
     aiLayoutLog(`[步骤7] AI 返回: raw==null? ${raw == null}; 返回长度=${raw ? raw.length : 0}; 截断=${truncated}; (详见 ai-debug.log 的 [req]/[resp])`);
     aiDbg(`runAiLayout: askAI 返回 raw==null? ${raw == null}; raw长度=${raw ? raw.length : 0}`);
@@ -2953,13 +2955,13 @@ function bindPublishMenu() {
         if (!item) return;
         const t = DESIGN_LANGUAGES.find((x) => x.id === item.dataset.id);
         if (aiThemeModal) aiThemeModal.classList.add("hidden");
-        runAiLayout(t || null);
+        runAiLayout(t || null, aiLayoutOpts());
       });
     const aiThemeSkip = document.getElementById("ai-theme-skip");
     if (aiThemeSkip)
       aiThemeSkip.addEventListener("click", () => {
         if (aiThemeModal) aiThemeModal.classList.add("hidden");
-        runAiLayout(null);
+        runAiLayout(null, aiLayoutOpts());
       });
     const aiThemeClose = document.getElementById("ai-theme-close");
     if (aiThemeClose) aiThemeClose.addEventListener("click", () => { if (aiThemeModal) aiThemeModal.classList.add("hidden"); });
@@ -4536,6 +4538,11 @@ function updateCharCount() {
 }
 
 /* ---------- AI 排版主题选择弹窗 ---------- */
+/** 读取主题弹窗里的「插入图片占位块」开关，传给 AI 排版（默认开启） */
+function aiLayoutOpts() {
+  const cb = document.getElementById("ai-img-ph");
+  return { imgPlaceholder: cb ? cb.checked : true };
+}
 function openAiThemeModal() {
   const modal = document.getElementById("ai-theme-modal");
   const grid = document.getElementById("ai-theme-grid");
@@ -4576,6 +4583,9 @@ function openAiThemeModal() {
       grid.appendChild(card);
     });
   });
+  // 图片占位开关：默认勾选（恢复「之前都有占位」的行为）
+  const phCb = document.getElementById("ai-img-ph");
+  if (phCb) phCb.checked = true;
   modal.classList.remove("hidden");
 }
 
