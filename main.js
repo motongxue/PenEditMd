@@ -1109,7 +1109,7 @@ ipcMain.handle("ai:chat", async (event, payload) => {
           model,
           messages,
           temperature,
-          max_tokens: maxTokens,
+          ...(maxTokens ? { max_tokens: maxTokens } : {}),
           stream: false,
           // 已知推理模型关闭 thinking（见 REASONING_MODELS），其余模型不附加该参数，
           // 避免把不支持 thinking 的模型（如 deepseek-chat）误带参数导致接口报错。

@@ -2654,12 +2654,18 @@ async function runAiLayout(theme) {
   aiDbg(`runAiLayout: 发往AI的消息数=${messages.length}, 首条role=${messages[0].role}, 总字符≈${totalChars}`);
   showAiBusy("正在排版中…");
   try {
-    const raw = await askAI(messages, { maxTokens: 8192 });
+    const raw = await askAI(messages);
     const truncated = !!(lastAiResponse && lastAiResponse.truncated);
     aiLayoutLog(`[步骤7] AI 返回: raw==null? ${raw == null}; 返回长度=${raw ? raw.length : 0}; 截断=${truncated}; (详见 ai-debug.log 的 [req]/[resp])`);
     aiDbg(`runAiLayout: askAI 返回 raw==null? ${raw == null}; raw长度=${raw ? raw.length : 0}`);
     if (raw == null) { aiDbg("runAiLayout: AI 返回 null，终止(askAI 已提示)"); aiLayoutLog("========== AI 排版流程结束(AI 返回空/错误) =========="); return; } // askAI 已提示
-    if (truncated) setStatus("AI 输出被截断（max_tokens 不足），排版可能不完整；可删减内容后重试");
+    // 输出被截断：不完整的 HTML 不应展示给用户，避免把半成品当成品
+    if (truncated) {
+      setStatus("⚠️ AI 排版被截断（输出 token 超限），未生成完整 HTML，已停止展示。建议：删减正文 / 改用输出长度更大的模型 / 重试");
+      aiDbg("runAiLayout: 截断，不展示不完整结果");
+      aiLayoutLog("========== AI 排版流程结束(截断, 不展示) ==========");
+      return;
+    }
     const html = stripCodeFence(raw);
     const visible = html.replace(/<[^>]*>/g, "").replace(/&nbsp;|&#?\w+;/g, " ").trim();
     aiDbg(`runAiLayout: strip后 html长度=${html.length}, 可见文字长度=${visible.length}`);
