@@ -56,13 +56,36 @@ SOFTWARE.
 
 ## 2b. gzh-AI-Design-skill（AI 排版方法论 / 推送引擎）
 
-> ⚠️ **该组件未随附任何 LICENSE 文件，默认保留原作者全部权利。**
-> 即便本项目自身已采用 AGPL-3.0，也**无权将无许可证的第三方代码纳入分发**。
-> 在取得原作者明确授权之前，不应将其作为可对外分发的组成部分发布；否则须从项目中移除该组件。
+- 来源：WorkBuddy 内置 `gzh-AI-Design-skill`（仓库 https://github.com/Patrick-mufeng/gzh-AI-Design-skill）
+- 协议：**MIT License（README 中声明）**
+- 版权：© Patrick-mufeng（README 未单独列出版权行，以仓库所有人为准）
 
-- 来源：WorkBuddy 内置 `gzh-AI-Design-skill`
-- 协议：**未随附 LICENSE 文件（许可状态未知）**
-- 说明：使用前须取得原作者明确授权；授权确认前不应作为可分发部分发布。
+> 注：该组件上游未提供独立的 `LICENSE` 文件，仅在 README 「协议」章节声明为 MIT License。
+> 该声明已构成有效授权；若上游后续补充带版权行的 LICENSE，应同步替换本节引用。
+
+```
+MIT License
+
+Copyright (c) Patrick-mufeng
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 
