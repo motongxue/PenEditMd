@@ -768,22 +768,41 @@ async function openFiles() {
   await convertByPaths(paths);
 }
 
+// 原生文本格式：这些扩展名本身就是 Markdown / 纯文本，直接读原文即可，
+// 绝不能丢给 markitdown 后端二次转换（会把内容清空或报错，表现为「转换中」后空白 + 标题变红）。
+const NATIVE_TEXT_EXT = new Set([".md", ".markdown", ".mdx", ".txt"]);
+function extOf(p) {
+  const m = /\.[^.\\/]+$/.exec(p || "");
+  return m ? m[0].toLowerCase() : "";
+}
+
 async function convertByPaths(paths) {
   showOverlay(`转换中 (0/${paths.length})`);
   let lastId = null;
   for (let i = 0; i < paths.length; i++) {
     const p = paths[i];
+    const name = p.split(/[\\/]/).pop();
     els.overlayText.textContent = `转换中 (${i + 1}/${paths.length})`;
     try {
+      if (NATIVE_TEXT_EXT.has(extOf(p))) {
+        // 原生文本：直接读原文载入（保留 filePath，可 Ctrl+S 写回原文件）
+        const r = await window.api.readTextFileAbs(p);
+        if (!r || !r.ok) {
+          lastId = addResult(name, null, (r && r.error) || "读取失败");
+        } else {
+          lastId = addResult(name, r.text, null, true, true, p);
+        }
+        continue;
+      }
       const res = await fetch(`${state.baseUrl}/convert_path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: p }),
       });
       const data = await res.json();
-      lastId = addResult(p.split(/[\\/]/).pop(), data.markdown, data.error);
+      lastId = addResult(name, data.markdown, data.error);
     } catch (err) {
-      lastId = addResult(p.split(/[\\/]/).pop(), null, err.message);
+      lastId = addResult(name, null, err.message);
     }
   }
   hideOverlay();
@@ -2492,7 +2511,7 @@ async function runAiInline(action) {
   // ---- 详细日志（写入 ai-layout.log，与 AI 排版同文件）----
   aiLayoutLog(`========== 行内 AI「${act.label}」流程开始 ==========`);
   aiLayoutLog(`[步骤1] 模式: ${hasSel ? "选区" : "全文(未选中文字, 回退整篇)"}; 处理对象长度=${srcText ? srcText.length : 0} 字`);
-  aiLayoutLog(`[步骤2] 是否调用开源 skills: 否 —— 行内 AI 直接套用公众号《写东西卡壳？》文章提炼的创作类提示词(润色/改写/续写/翻译/摘要)，无外部进程/无 gzh-AI-Design-skill`);
+  aiLayoutLog(`[步骤2] 是否调用开源 skills: 否 —— 行内 AI 直接套用公众号《写东西卡壳？》文章提炼的创作类提示词(润色/改写/续写/翻译/摘要)，无外部进程`);
   // 提示词模板（{text} 尚未替换）
   aiLayoutLog(`[步骤3] 使用的提示词模板(取自创作类文章, 含 {text} 占位) ↓↓↓\n${act.prompt}`);
   if (!srcText || !srcText.trim()) {
@@ -2538,7 +2557,7 @@ async function runAiTitleTags() {
   // ---- 详细日志（写入 ai-layout.log，与 AI 排版同文件）----
   aiLayoutLog(`========== 行内 AI「自动标题/标签」流程开始 ==========`);
   aiLayoutLog(`[步骤1] 模式: 全文(标题/标签必须看整篇); 取文档前 4000 字作为处理对象; 原文长度=${md.length} 字`);
-  aiLayoutLog(`[步骤2] 是否调用开源 skills: 否 —— 标题/标签为内置固定提示词，无外部进程/无 gzh-AI-Design-skill`);
+  aiLayoutLog(`[步骤2] 是否调用开源 skills: 否 —— 标题/标签为内置固定提示词，无外部进程`);
   if (!md.trim()) {
     aiLayoutLog(`[步骤3] 文档为空，终止`);
     aiLayoutLog(`========== 行内 AI「自动标题/标签」流程结束(空) ==========`);

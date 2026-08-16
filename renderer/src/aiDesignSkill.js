@@ -19,7 +19,7 @@
 import { getThemeLibrary, commonComponents, themeIndex, DEFAULT_THEME_ID } from "./aiLayoutThemes.js";
 
 /** 12 套设计语言（取自 gzh-design-skill 的 theme-index.md，含主色、气质与适用场景）
- *  group：core = skill 原生 6 套；ported = 由 gzh-AI-Design-skill 移植改编的 6 套 */
+ *  group：core = skill 原生 6 套；ported = 由 gzh-design-skill 移植改编的 6 套 */
 export const DESIGN_LANGUAGES = [
   { id: "moyu-green", group: "core", name: "摸鱼绿", mainColor: "#059669", vibe: "卡片丰富 · 信息密度高 · 呼吸感", fit: "教程、测评、清单、工具盘点、知识整理" },
   { id: "red-white", group: "core", name: "红白色系", mainColor: "#DC2626", vibe: "经典编辑风 · 编号章节 + 引言卡", fit: "深度分析、观点、力量感话题" },

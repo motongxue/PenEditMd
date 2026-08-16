@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld("api", {
   listDir: (root, dir) => ipcRenderer.invoke("fs:listDir", { root, dir }),
   // 读取文本文件，越界/失败返回 null
   readTextFile: (root, target) => ipcRenderer.invoke("fs:readText", { root, target }),
+  // 读取任意绝对路径的文本文件（系统「打开方式/双击」场景，用于原生 .md/.txt 直接载入，不经转换）
+  readTextFileAbs: (p) => ipcRenderer.invoke("fs:readTextAbs", p),
   // 新建目录，返回新目录路径或 null
   createDir: (root, parent, folderName) =>
     ipcRenderer.invoke("fs:mkdir", { root, parent, folderName }),

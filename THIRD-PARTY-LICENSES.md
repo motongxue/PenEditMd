@@ -54,45 +54,6 @@ SOFTWARE.
 
 ---
 
-## 2b. gzh-AI-Design-skill（AI 排版方法论 / 推送引擎）
-
-- 来源：WorkBuddy 内置 `gzh-AI-Design-skill`（仓库 https://github.com/Patrick-mufeng/gzh-AI-Design-skill）
-- 协议：**MIT License（README 中声明）**
-- 版权：© Patrick-mufeng（README 未单独列出版权行，以仓库所有人为准）
-
-> 注：该组件上游未提供独立的 `LICENSE` 文件，仅在 README 「协议」章节声明为 MIT License。
-> 该声明已构成有效授权；若上游后续补充带版权行的 LICENSE，应同步替换本节引用。
-
-```
-MIT License
-
-Copyright (c) Patrick-mufeng
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-
-
----
-
 ## 3. 前端 npm 依赖
 
 以下依赖通过 `package.json` 引入，均为宽松协议（MIT / ISC / BSD-3-Clause）：

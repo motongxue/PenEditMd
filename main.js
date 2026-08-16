@@ -842,6 +842,28 @@ ipcMain.handle("fs:readText", (event, { root, target }) => {
   }
 });
 
+// 读取任意绝对路径的文本文件（操作系统「打开方式/双击」场景：文件由用户显式选择，不走文档树沙箱）。
+// 用于 .md/.markdown/.mdx/.txt 等原生文本格式——它们不应被 markitdown 后端二次转换（否则会被清空/报错）。
+ipcMain.handle("fs:readTextAbs", (event, p) => {
+  if (!p || typeof p !== "string") return { ok: false, error: "无效路径" };
+  let ap;
+  try {
+    ap = path.resolve(p);
+  } catch (_) {
+    return { ok: false, error: "路径解析失败" };
+  }
+  const lower = ap.toLowerCase();
+  const SENSITIVE = ["c:\\windows", "c:\\program files", "c:\\programdata", "/etc", "/proc", "/sys", "/boot", "/root"];
+  if (SENSITIVE.some((d) => lower === d || lower.startsWith(d + path.sep))) {
+    return { ok: false, error: "拒绝访问受限路径" };
+  }
+  try {
+    return { ok: true, text: fs.readFileSync(ap, "utf-8") };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
 // 新建目录：在 root 内的 parent 下创建 folderName。返回新目录绝对路径或 null
 ipcMain.handle("fs:mkdir", (event, { root, parent, folderName }) => {
   const base = resolveWithin(root, parent);

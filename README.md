@@ -159,7 +159,7 @@ AI 排版把当前 Markdown 交给一个**兼容 OpenAI `/chat/completions` 的 
 
 **内置 12 套设计语言**（`renderer/assets/ai-layout/`）：
 - 原生 6 套（gzh-design-skill）：摸鱼绿、红白色系、石墨极简、留白禅意、摸鱼票据、橄榄手记
-- 移植 6 套（gzh-AI-Design-skill）：极简蓝、暖纸墨、暗夜青、森语绿、绯红编、墨金雅
+- 移植 6 套（gzh-design-skill 生态）：极简蓝、暖纸墨、暗夜青、森语绿、绯红编、墨金雅
 
 排版结果可：分屏预览（可编辑）、复制 HTML、保存本地、或**推送至公众号草稿箱**。
 
@@ -233,7 +233,6 @@ Python 后端通过**本地 HTTP（默认端口 8765，可用环境变量 `MARKI
 
 - 核心转换引擎 **Microsoft markitdown**：MIT（© Microsoft Corporation）
 - AI 排版组件库 **gzh-design-skill**：AGPL-3.0（© 甲木 × 摸鱼小李），全文见 `licenses/gzh-design-skill-LICENSE`
-- AI 排版方法论 / 推送引擎 **gzh-AI-Design-skill**：MIT（README 声明，© Patrick-mufeng）
 - 前端 / 运行时依赖（marked、DOMPurify、KaTeX、Mermaid、highlight.js、Turndown、Electron、Chromium、Python 等）许可证见 `THIRD-PARTY-LICENSES.md`
 
 > 依据 AGPL-3.0：任何人获取到本软件的二进制（含安装包、在线服务），均有权获得其对应源代码。完整源码见公开仓库 https://github.com/motongxue/PenEditMd 。
