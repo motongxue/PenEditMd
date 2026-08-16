@@ -4107,6 +4107,48 @@ function selectInSource(start, end) {
   ta.scrollTop = Math.max(0, rows * m.lh + m.padT - ta.clientHeight / 2);
 }
 
+/* ---------- 预览联动：查找命中后把预览滚到对应内容 ---------- */
+/**
+ * 查找默认只在编辑器（隐藏的 rich/source）里选中并滚动编辑器，纯预览 / 分屏模式下
+ * 用户看的是预览面板，编辑器不可见，所以点「下一个」时预览纹丝不动、像没定位。
+ * 这里按匹配串在预览正文里找到对应位置并滚到视口中央，让"定位到内容"真正生效。
+ */
+function scrollPreviewToMatch(s, e) {
+  if (state.mode === "source") return; // 源码模式没有预览
+  if (els.preview.classList.contains("hidden")) return; // 预览不可见则无需定位
+  const text = searchText();
+  const q = (text || "").slice(s, e);
+  if (!q) return;
+  const pvText = els.preview.textContent || "";
+  let idx = pvText.indexOf(q);
+  if (idx < 0) {
+    // 直匹配失败（匹配串含 markdown 语法等），退而用首词粗定位
+    const head = q.split(/\s+/)[0];
+    if (head && head.length > 1) idx = pvText.indexOf(head);
+  }
+  if (idx < 0) return;
+  const walker = document.createTreeWalker(els.preview, NodeFilter.SHOW_TEXT);
+  let node, pos = 0, target = null;
+  while ((node = walker.nextNode())) {
+    const len = node.nodeValue.length;
+    if (pos + len > idx) { target = node; break; }
+    pos += len;
+  }
+  if (!target) return;
+  const range = document.createRange();
+  const start = idx - pos;
+  try {
+    range.setStart(target, start);
+    range.setEnd(target, Math.min(target.nodeValue.length, start + q.length));
+  } catch (_) { return; }
+  const rect = range.getBoundingClientRect();
+  const host = els.preview;
+  const hr = host.getBoundingClientRect();
+  if (rect.height || rect.width) {
+    host.scrollTop += rect.top - hr.top - host.clientHeight / 2 + rect.height / 2;
+  }
+}
+
 /* ---------- 匹配收集 ---------- */
 function searchText() {
   return state.editorType === "source" ? els.source.value : buildRichIndex().text;
@@ -4147,6 +4189,7 @@ function gotoMatch(i) {
   const [s, e] = list[findState.index];
   if (state.editorType === "source") selectInSource(s, e);
   else selectInRich(s, e);
+  scrollPreviewToMatch(s, e); // 预览也定位到匹配处（修 #预览查找不定位）
   updateFindStatus(`第 ${findState.index + 1} / ${list.length} 个匹配`);
 }
 

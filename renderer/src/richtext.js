@@ -138,9 +138,13 @@ const BLOCK_TAGS = new Set([
 export function createRichEditor({ el, onChange }) {
   let lastMarkdown = "";
   let composing = false; // 中文输入法组合中
+  let cachedMd = ""; // getValue 的序列化结果缓存：DOM 未变时直接复用，避免每次按键全量 turndown
+  let domDirty = true; // 内容是否发生变化、需要重新序列化
+  let inputTimer = null; // 输入防抖：把连续打字合并成一次序列化，消除卡顿
 
   function triggerChange() {
     if (composing) return;
+    domDirty = true;
     const md = getValue();
     if (md !== lastMarkdown) {
       lastMarkdown = md;
@@ -148,11 +152,22 @@ export function createRichEditor({ el, onChange }) {
     }
   }
 
+  // 输入事件走防抖：连续打字只在停顿后序列化一次，主线程不再被 turndown 占满，
+  // 光标/字符就能即时显示（修 #输入卡顿）。命令式改动（加粗/粘贴/插入等）仍走同步 triggerChange。
+  function scheduleTrigger() {
+    if (composing) return;
+    domDirty = true; // 标记脏：刷新前若外部取 getValue，也返回最新 DOM 而非旧缓存
+    if (inputTimer) clearTimeout(inputTimer);
+    inputTimer = setTimeout(() => { inputTimer = null; triggerChange(); }, 150);
+  }
+
   function setValue(md) {
     // 先把内嵌 base64 折叠成 @img:id:name 占位符（与源码模式同一套 imageStore）。
     // 否则一张高清图就是几十万字符，直接进 contenteditable 会让大文档打字明显掉帧。
     md = shrinkMarkdown(md || "");
     lastMarkdown = md;
+    cachedMd = md;
+    domDirty = false; // 刚由 md 重建 DOM，序列化结果即等于 md
     const html = marked.parse(md || "") + "\n<p><br></p>"; // 末尾留空行方便继续输入
     const clean = DOMPurify.sanitize(html, {
       USE_PROFILES: { html: true },
@@ -655,6 +670,8 @@ export function createRichEditor({ el, onChange }) {
   }
 
   function getValue() {
+    // 缓存：DOM 未变时直接返回上次的序列化结果，避免每次按键都全量 turndown 整篇文档（修 #输入卡顿）。
+    if (!domDirty) return cachedMd;
     // 关键：<textarea> 序列化成 HTML 时用的是「默认值」（子文本节点），不是用户输入后的 value。
     // 不同步的话，用户在代码块里敲的内容永远不会进入 markdown（改了等于没改）。
     // 把 value 写回 defaultValue 即可更新子文本节点；因为控件已 dirty，不会反过来重置 value/光标。
@@ -665,7 +682,9 @@ export function createRichEditor({ el, onChange }) {
     let html = el.innerHTML;
     // 去掉末尾由我们添加的空白段落，避免无限追加换行
     html = html.replace(/<p><br\s*\/?><\/p>\s*$/i, "");
-    return turndown.turndown(html).trim();
+    cachedMd = turndown.turndown(html).trim();
+    domDirty = false;
+    return cachedMd;
   }
 
   function focus() {
@@ -1390,7 +1409,7 @@ export function createRichEditor({ el, onChange }) {
     richBound[type] = handler;
     el.addEventListener(type, handler);
   };
-  onRich("input", triggerChange);
+  onRich("input", scheduleTrigger);
   onRich("keydown", onKeydown);
   onRich("click", onRichClick);
   onRich("dblclick", onRichDblClick);
