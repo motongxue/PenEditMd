@@ -19,16 +19,16 @@ import {
   cellCaretOffset,
 } from "./tableMd.js";
 
-export function createEditor({ type = "richtext", ta, rich, onChange }) {
+export function createEditor({ type = "richtext", ta, rich, onChange, onInput }) {
   return type === "source"
     ? createSourceEditor({ ta, onChange })
-    : createRichEditor({ el: rich, onChange });
+    : createRichEditor({ el: rich, onChange, onInput });
 }
 
 /**
  * 源码编辑器：基于原生 textarea，带 base64 图片占位符折叠。
  */
-function createSourceEditor({ ta, onChange }) {
+function createSourceEditor({ ta, onChange, onInput }) {
   function triggerChange() {
     // 直接传当前（已折叠为 @img: 占位符的）源码。
     // 千万不要在这里 expandMarkdown：一旦展开成 11MB base64，
@@ -289,7 +289,7 @@ function createSourceEditor({ ta, onChange }) {
     srcBound[type] = handler;
     ta.addEventListener(type, handler);
   };
-  onSrc("input", triggerChange);
+  onSrc("input", () => { onInput?.(); triggerChange(); });
   onSrc("keydown", onKeydown);
 
   return {

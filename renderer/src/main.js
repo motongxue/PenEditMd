@@ -394,6 +394,7 @@ function createCurrentEditor() {
     ta: els.source,
     rich: els.rich,
     onChange: onEditorChange,
+    onInput: () => { lastEditorInputAt = Date.now(); },
   });
   updateEditorTypeUI();
 }
@@ -1603,10 +1604,18 @@ let renderDirty = false;
 function isLargeDoc() {
   return (currentMarkdown() || "").length > LARGE_DOC_CHARS;
 }
+// 最近一次"用户输入字符"的时刻。预览渲染据此做「空闲闸门」：
+// 用户正在打字（距上次输入 <400ms）时绝不重渲染预览，避免每敲一字都触发
+// markdown 解析 + DOM 重建冻结主线程（修 #输入卡顿；参考 Typora/MarkText 增量渲染思路）。
+let lastEditorInputAt = 0;
+
 function scheduleRender() {
   clearTimeout(renderTimer);
-  // 大文档防抖更长，进一步批量合并快速输入；renderMarkdownInto 内部按段增量渲染
-  const delay = isLargeDoc() ? 450 : 220;
+  const base = isLargeDoc() ? 450 : 220;
+  // 把渲染推迟到「用户停手 400ms 后」才执行；连续打字时每次输入都会把渲染往后推，
+  // 于是打字过程里预览零重渲染，光标/字符即时显示，停手后才一次性刷新预览。
+  const idleAt = lastEditorInputAt + 400;
+  const delay = Math.max(base, idleAt - Date.now());
   renderTimer = setTimeout(renderPreview, delay);
 }
 async function renderPreview() {
@@ -4113,40 +4122,63 @@ function selectInSource(start, end) {
  * 用户看的是预览面板，编辑器不可见，所以点「下一个」时预览纹丝不动、像没定位。
  * 这里按匹配串在预览正文里找到对应位置并滚到视口中央，让"定位到内容"真正生效。
  */
-function scrollPreviewToMatch(s, e) {
+/* 预览内查找定位：直接搜「预览渲染后的文本」（用户真正看到的内容），
+ * 而不是用编辑器 markdown 的下标去猜预览位置——两者文本对不上会导致定位失效。
+ * 收集预览自身的全部匹配下标，gotoMatch 命中第 N 个时，把预览滚到第 N 个。 */
+let previewFindCache = { key: "", matches: [] };
+function buildPreviewFindMatches() {
+  const q = els.findInput.value;
+  if (!q) return [];
+  const key =
+    q + "|" + els.findRegex.checked + "|" + els.findCase.checked + "|" + els.findWord.checked +
+    "|" + docVersion; // 文档变更后缓存自动失效，避免定位到旧内容
+  if (previewFindCache.key === key) return previewFindCache.matches;
+  const pvText = els.preview.textContent || "";
+  const flags = (els.findCase.checked ? "" : "i") + "g";
+  let re;
+  if (els.findRegex.checked) {
+    try { re = new RegExp(q, flags); } catch { previewFindCache = { key, matches: [] }; return []; }
+  } else {
+    let src = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (els.findWord.checked) src = "\\b" + src + "\\b";
+    re = new RegExp(src, flags);
+  }
+  const matches = [];
+  let m, g = 0;
+  while ((m = re.exec(pvText)) !== null) {
+    matches.push([m.index, m.index + m[0].length]);
+    if (m[0].length === 0) re.lastIndex++;
+    if (++g >= 100000) break;
+  }
+  previewFindCache = { key, matches };
+  return matches;
+}
+
+function scrollPreviewToMatch() {
   if (state.mode === "source") return; // 源码模式没有预览
   if (els.preview.classList.contains("hidden")) return; // 预览不可见则无需定位
-  const text = searchText();
-  const q = (text || "").slice(s, e);
-  if (!q) return;
-  const pvText = els.preview.textContent || "";
-  let idx = pvText.indexOf(q);
-  if (idx < 0) {
-    // 直匹配失败（匹配串含 markdown 语法等），退而用首词粗定位
-    const head = q.split(/\s+/)[0];
-    if (head && head.length > 1) idx = pvText.indexOf(head);
-  }
-  if (idx < 0) return;
+  const matches = buildPreviewFindMatches();
+  if (!matches.length) return;
+  // 与编辑器侧的 findState.index 对齐：用户点「下一个」时预览也前进到对应匹配。
+  let i = findState.index;
+  if (i < 0 || i >= matches.length) i = 0;
+  const [s, e] = matches[i];
+  // 在预览文本节点里定位 [s,e]，构造 Range 并滚到视口中央
   const walker = document.createTreeWalker(els.preview, NodeFilter.SHOW_TEXT);
-  let node, pos = 0, target = null;
+  let node, pos = 0, startNode = null, startOff = 0, endNode = null, endOff = 0;
   while ((node = walker.nextNode())) {
     const len = node.nodeValue.length;
-    if (pos + len > idx) { target = node; break; }
+    if (startNode === null && pos + len > s) { startNode = node; startOff = s - pos; }
+    if (pos + len >= e) { endNode = node; endOff = e - pos; break; }
     pos += len;
   }
-  if (!target) return;
+  if (!startNode || !endNode) return;
   const range = document.createRange();
-  const start = idx - pos;
   try {
-    range.setStart(target, start);
-    range.setEnd(target, Math.min(target.nodeValue.length, start + q.length));
-  } catch (_) { return; }
-  const rect = range.getBoundingClientRect();
-  const host = els.preview;
-  const hr = host.getBoundingClientRect();
-  if (rect.height || rect.width) {
-    host.scrollTop += rect.top - hr.top - host.clientHeight / 2 + rect.height / 2;
-  }
+    range.setStart(startNode, startOff);
+    range.setEnd(endNode, endOff);
+    range.scrollIntoView({ block: "center" }); // 浏览器自动滚到正确滚动容器（#preview）
+  } catch (_) { /* 忽略个别极端节点的定位失败 */ }
 }
 
 /* ---------- 匹配收集 ---------- */
@@ -4189,7 +4221,7 @@ function gotoMatch(i) {
   const [s, e] = list[findState.index];
   if (state.editorType === "source") selectInSource(s, e);
   else selectInRich(s, e);
-  scrollPreviewToMatch(s, e); // 预览也定位到匹配处（修 #预览查找不定位）
+  scrollPreviewToMatch(); // 预览也定位到匹配处（修 #预览查找不定位）
   updateFindStatus(`第 ${findState.index + 1} / ${list.length} 个匹配`);
 }
 
@@ -4386,10 +4418,16 @@ function bindFind() {
 
   // 改查询词或选项时，重置定位，从头开始找
   ["input", "change"].forEach((ev) => {
-    els.findInput.addEventListener(ev, () => (findState.index = -1));
+    els.findInput.addEventListener(ev, () => {
+      findState.index = -1;
+      previewFindCache.key = ""; // 预览匹配缓存随之失效，下次重新收集
+    });
   });
   [els.findRegex, els.findCase, els.findWord].forEach((c) =>
-    c.addEventListener("change", () => (findState.index = -1))
+    c.addEventListener("change", () => {
+      findState.index = -1;
+      previewFindCache.key = "";
+    })
   );
 
   els.findInput.addEventListener("keydown", (e) => {

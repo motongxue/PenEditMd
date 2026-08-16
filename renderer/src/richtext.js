@@ -135,7 +135,7 @@ const BLOCK_TAGS = new Set([
   "BLOCKQUOTE", "LI", "PRE", "TD", "TH", "SECTION", "ARTICLE",
 ]);
 
-export function createRichEditor({ el, onChange }) {
+export function createRichEditor({ el, onChange, onInput }) {
   let lastMarkdown = "";
   let composing = false; // 中文输入法组合中
   let cachedMd = ""; // getValue 的序列化结果缓存：DOM 未变时直接复用，避免每次按键全量 turndown
@@ -156,6 +156,7 @@ export function createRichEditor({ el, onChange }) {
   // 光标/字符就能即时显示（修 #输入卡顿）。命令式改动（加粗/粘贴/插入等）仍走同步 triggerChange。
   function scheduleTrigger() {
     if (composing) return;
+    onInput?.(); // 上报输入时刻，供预览渲染做「空闲才渲」闸门，避免打字期间冻结主线程
     domDirty = true; // 标记脏：刷新前若外部取 getValue，也返回最新 DOM 而非旧缓存
     if (inputTimer) clearTimeout(inputTimer);
     inputTimer = setTimeout(() => { inputTimer = null; triggerChange(); }, 150);
